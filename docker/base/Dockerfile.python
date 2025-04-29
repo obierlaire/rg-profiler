@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies including build tools for profiling
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    make \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dependencies for profiling
+RUN pip install --no-cache-dir codecarbon scalene
+
+# Expose the server port
+EXPOSE 8080
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Create a preload script for later use
+RUN echo 'import time\ntry:\n    from app import app\n    print("App preloaded successfully")\n    time.sleep(1)\nexcept Exception as e:\n    print(f"Preload warning: {e}")' > /tmp/preload.py
+
+# No CMD instruction - will be provided by derived images

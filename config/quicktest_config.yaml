@@ -1,0 +1,40 @@
+# Super fast test configuration for quick validation
+mode: quicktest
+
+# No profiling for quicktest mode
+profiling:
+  scalene:
+    enabled: false
+
+# Minimal WRK settings
+wrk:
+  # Very short duration
+  duration: 2
+  # No pipelining
+  pipeline: 1
+  # Single connection
+  max_concurrency: 1
+  # Single level
+  levels: "1"
+  # Short timeout
+  timeout: 2
+  # Basic headers
+  headers:
+    Accept: application/json
+    Connection: keep-alive
+
+# Minimal server settings
+server:
+  # No warmup
+  warmup_time: 0
+  # No recovery
+  recovery_time: 0
+  # Short startup timeout
+  startup_timeout: 20
+  # Minimal stabilization
+  stabilization_time: 1
+
+# Only test a single simple endpoint
+endpoints:
+  include_all: false
+  include: ["json"]

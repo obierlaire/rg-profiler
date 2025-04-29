@@ -1,0 +1,15 @@
+# Core dependencies
+psutil>=5.9.0          # Process management
+PyYAML>=6.0            # Configuration file parsing
+codecarbon>=2.3.0      # Energy measurement
+pandas>=1.3.0          # Data processing for CodeCarbon output
+
+# Database clients (for testing connection)
+psycopg2-binary>=2.9.3 # PostgreSQL client
+pymysql>=1.0.2         # MySQL client
+pymongo>=4.3.3         # MongoDB client
+
+# Development dependencies
+pytest>=7.0.0          # Testing
+black>=22.3.0          # Code formatting
+pylint>=2.13.0         # Linting

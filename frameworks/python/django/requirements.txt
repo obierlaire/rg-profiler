@@ -1,0 +1,13 @@
+# Python version: 3.11
+Django==4.2.3
+asgiref==3.7.2
+sqlparse==0.4.4
+
+# Database drivers
+psycopg2-binary==2.9.6
+pymysql==1.1.0
+pymongo==4.4.0
+
+# Performance optimizations
+gunicorn==20.1.0
+whitenoise==6.5.0

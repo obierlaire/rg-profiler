@@ -1,0 +1,12 @@
+#!/bin/bash
+# Generic entrypoint script for Python frameworks in the RG Profiler
+
+# Make script output commands as executed
+set -x
+
+# Ensure output directories exist
+mkdir -p /output/scalene /output/energy /output/runs
+
+# Run the command provided by the runner
+echo Running cmd: {{RUN_COMMAND}}
+exec {{RUN_COMMAND}}

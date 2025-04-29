@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ title }}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      background-color: #f8f8f8;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #444;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th {
+      background-color: #f2f2f2;
+      text-align: left;
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    td {
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    tr:hover {
+      background-color: #f2f2f2;
+    }
+    .footer {
+      margin-top: 30px;
+      font-size: 0.8em;
+      color: #777;
+      text-align: center;
+    }
+    .info-box {
+      background-color: #e8f4fd;
+      border: 1px solid #b2d6f5;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    .warning-box {
+      background-color: #fff8e1;
+      border: 1px solid #ffd54f;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>{{ title }}</h1>
+    
+    <div class="info-box">
+      <p>This is a complex template demonstration with multiple sections, loops, and conditionals.</p>
+      <p>Total fortunes: {{ fortunes|length }}</p>
+    </div>
+    
+    {% if fortunes|length > 0 %}
+      <table>
+        <tr>
+          <th>id</th>
+          <th>message</th>
+        </tr>
+        {% for fortune in fortunes %}
+        <tr>
+          <td>{{ fortune.id }}</td>
+          <td>{{ fortune.message }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <div class="warning-box">
+        <p>No fortunes found in the database.</p>
+      </div>
+    {% endif %}
+    
+    <div class="info-box">
+      <h3>Fortune Statistics</h3>
+      <ul>
+        {% with total_length=0 %}
+          {% for fortune in fortunes %}
+            {% with temp=total_length|add:fortune.message|length %}
+              {% if forloop.last %}
+                {% with avg_length=temp|divisibleby:fortunes|length %}
+                  <li>Average fortune length: {{ avg_length }} characters</li>
+                {% endwith %}
+              {% endif %}
+              {% with total_length=temp %}{% endwith %}
+            {% endwith %}
+          {% endfor %}
+        {% endwith %}
+        
+        <li>Shortest fortune: 
+          {% with min_length=99999 %}
+            {% for fortune in fortunes %}
+              {% if fortune.message|length < min_length %}
+                {% with min_length=fortune.message|length %}{% endwith %}
+              {% endif %}
+              {% if forloop.last %}{{ min_length }}{% endif %}
+            {% endfor %}
+          {% endwith %}
+          characters
+        </li>
+        
+        <li>Longest fortune:
+          {% with max_length=0 %}
+            {% for fortune in fortunes %}
+              {% if fortune.message|length > max_length %}
+                {% with max_length=fortune.message|length %}{% endwith %}
+              {% endif %}
+              {% if forloop.last %}{{ max_length }}{% endif %}
+            {% endfor %}
+          {% endwith %}
+          characters
+        </li>
+      </ul>
+    </div>
+    
+    <h3>Fortune Categories</h3>
+    <ul>
+      {% with short_count=0 medium_count=0 long_count=0 %}
+        {% for fortune in fortunes %}
+          {% if fortune.message|length < 20 %}
+            {% with short_count=short_count|add:1 %}{% endwith %}
+          {% elif fortune.message|length < 50 %}
+            {% with medium_count=medium_count|add:1 %}{% endwith %}
+          {% else %}
+            {% with long_count=long_count|add:1 %}{% endwith %}
+          {% endif %}
+          
+          {% if forloop.last %}
+            <li>Short (< 20 chars): {{ short_count }}</li>
+            <li>Medium (20-50 chars): {{ medium_count }}</li>
+            <li>Long (> 50 chars): {{ long_count }}</li>
+          {% endif %}
+        {% endfor %}
+      {% endwith %}
+    </ul>
+    
+    {% include 'footer.html' %}
+  </div>
+</body>
+</html>

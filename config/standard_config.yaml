@@ -1,0 +1,89 @@
+# Standard configuration for combined profiling and energy measurement
+mode: standard
+
+# Test definitions - endpoints to test and their scripts
+tests:
+  - name: json
+    endpoint: /json
+    script: json.lua
+    description: "JSON serialization test"
+    
+  - name: plaintext
+    endpoint: /plaintext
+    script: basic.lua
+    description: "Plaintext response test"
+    
+  - name: db
+    endpoint: /db
+    script: db.lua
+    description: "Database query test"
+    
+  - name: queries
+    endpoint: /queries
+    script: queries.lua
+    description: "Multiple database queries test"
+    parameters:
+      count: 20
+    
+  - name: template_simple
+    endpoint: /template-simple
+    script: template_simple.lua
+    description: "Simple template rendering test"
+    
+  - name: template_complex
+    endpoint: /template-complex
+    script: template_complex.lua
+    description: "Complex template rendering test"
+    
+  - name: cpu_intensive
+    endpoint: /cpu-intensive
+    script: cpu.lua
+    description: "CPU-intensive computation test"
+    
+  - name: memory_heavy
+    endpoint: /memory-heavy
+    script: memory.lua
+    description: "Memory-intensive operation test"
+
+# Profiling settings
+profiling:
+  scalene:
+    enabled: true
+    profile_all: true
+    reduced_profile: true
+    memory_sampling_rate: 100
+    cpu_sampling_rate: 0.01
+
+# Energy settings
+energy:
+  runs: 1
+  sampling_frequency: 1.0
+  cpu_isolation: 0
+  units:
+    energy: "Wh"
+    co2: "mgCO2e" 
+    time: "s"
+
+# CodeCarbon settings
+codecarbon:
+  measure_power_secs: 1.0
+  save_interval: 30
+  tracking_mode: "process"
+
+# WRK settings balancing profiling and throughput
+wrk:
+  duration: 30
+  pipeline: 1
+  max_concurrency: 16
+  levels: "16"
+  timeout: 10
+  headers:
+    Accept: application/json
+    Connection: keep-alive
+
+# Server settings
+server:
+  warmup_time: 3
+  recovery_time: 5
+  startup_timeout: 45
+  stabilization_time: 3

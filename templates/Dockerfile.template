@@ -1,0 +1,43 @@
+FROM rg-profiler-python-base:latest
+
+WORKDIR /app
+
+# The base image already includes:
+# - Python {{PYTHON_VERSION}}
+# - build-essential, make, gcc
+# - curl
+# - codecarbon and scalene for profiling
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Create output directories and ensure permissions
+RUN mkdir -p /output/scalene /output/energy /output/runs && chmod -R 777 /output
+
+# Copy application code
+COPY . .
+
+# Expose the server port
+EXPOSE 8080
+
+# Create preload script
+RUN echo 'import time\ntry:\n    from app import app\n    print("App preloaded successfully")\n    time.sleep(1)\nexcept Exception as e:\n    print(f"Preload warning: {e}")' > /tmp/preload.py
+
+# Preload framework to avoid cold start in profiling
+RUN python /tmp/preload.py
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV DB_HOST=rg-profiler-{{DB_TYPE}}
+ENV DB_PORT={{DB_PORT}}
+ENV DB_USER=benchmarkdbuser
+ENV DB_PASSWORD=benchmarkdbpass
+ENV DB_NAME=hello_world
+
+# Copy the generated entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Use the entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -1,0 +1,89 @@
+# Profile-focused configuration for CPU and memory analysis
+mode: profile
+
+# Test definitions - endpoints to test and their scripts
+tests:
+  - name: json
+    endpoint: /json
+    script: json.lua
+    description: "JSON serialization test"
+    
+  - name: plaintext
+    endpoint: /plaintext
+    script: basic.lua
+    description: "Plaintext response test"
+    
+  - name: db
+    endpoint: /db
+    script: db.lua
+    description: "Database query test"
+    
+  - name: queries
+    endpoint: /queries
+    script: queries.lua
+    description: "Multiple database queries test"
+    parameters:
+      count: 20
+    
+  - name: complex_routing
+    endpoint: /complex-routing/1/test/param1/param2
+    script: routing.lua
+    description: "Complex route handling test"
+    
+  - name: template_simple
+    endpoint: /template-simple
+    script: template_simple.lua
+    description: "Simple template rendering test"
+    
+  - name: template_complex
+    endpoint: /template-complex
+    script: template_complex.lua
+    description: "Complex template rendering test"
+    
+  - name: cpu_intensive
+    endpoint: /cpu-intensive
+    script: cpu.lua
+    description: "CPU-intensive computation test"
+    
+  - name: memory_heavy
+    endpoint: /memory-heavy
+    script: memory.lua
+    description: "Memory-intensive operation test"
+
+# Profiling settings
+profiling:
+  scalene:
+    enabled: true
+    profile_all: true   # Profile all code, not just application code
+    reduced_profile: true  # Use reduced profiling for better overhead
+    memory_sampling_rate: 100  # Memory sampling rate in Hz (higher = more accurate)
+    cpu_sampling_rate: 0.01  # CPU sampling rate in seconds (lower = more accurate)
+    pid_file: null  # Scalene PID file
+
+# WRK settings optimized for profiling
+wrk:
+  # Shorter duration for profiling runs
+  duration: 20
+  # No pipelining for cleaner profiling
+  pipeline: 1
+  # Low concurrency for more consistent profiling
+  max_concurrency: 8
+  # Single concurrency level
+  levels: "8"
+  # Connection timeout in seconds
+  timeout: 8
+  # Headers to include in requests
+  headers:
+    Accept: application/json
+    Connection: keep-alive
+
+# Server settings
+server:
+  # Brief warmup time
+  warmup_time: 2
+  # Recovery time between tests
+  recovery_time: 5
+  # Server startup timeout
+  startup_timeout: 45
+  # Post-startup stabilization
+  stabilization_time: 3

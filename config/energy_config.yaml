@@ -1,0 +1,92 @@
+# Energy-focused configuration for measuring power consumption
+mode: energy
+
+# Test definitions - endpoints to test and their scripts
+tests:
+  - name: json
+    endpoint: /json
+    script: json.lua
+    description: "JSON serialization test"
+    
+  - name: plaintext
+    endpoint: /plaintext
+    script: basic.lua
+    description: "Plaintext response test"
+    
+  - name: db
+    endpoint: /db
+    script: db.lua
+    description: "Database query test"
+    
+  - name: template_simple
+    endpoint: /template-simple
+    script: template_simple.lua
+    description: "Simple template rendering test"
+    
+  - name: cpu_intensive
+    endpoint: /cpu-intensive
+    script: cpu.lua
+    description: "CPU-intensive computation test"
+    
+  - name: memory_heavy
+    endpoint: /memory-heavy
+    script: memory.lua
+    description: "Memory-intensive operation test"
+
+# Energy measurement settings
+energy:
+  # Number of runs for statistical significance
+  runs: 3
+  # Interval between runs in seconds
+  run_interval: 10
+  # Sampling frequency in seconds (lower = more frequent)
+  sampling_frequency: 0.5
+  # CPU isolation (0 = enable, 1 = disable)
+  cpu_isolation: 0
+  # Custom units for output
+  units:
+    energy: "Wh"    # Options: Wh, kWh, J, kJ
+    co2: "mgCO2e"   # Options: mgCO2e, gCO2e, kgCO2e
+    time: "s"       # Options: s, ms, min
+
+# CodeCarbon settings
+codecarbon:
+  # Measure power consumption every X seconds
+  measure_power_secs: 0.5
+  # Save interval in seconds
+  save_interval: 15
+  # Tracking mode (process or machine)
+  tracking_mode: "process"
+
+# Profiling settings - Disabled for energy mode
+profiling:
+  scalene:
+    enabled: false
+
+# WRK settings optimized for reproducible energy measurements
+wrk:
+  # Longer duration for stable measurements
+  duration: 45
+  # No pipelining for consistent connection behavior
+  pipeline: 1
+  # Fixed concurrency - no ramping
+  max_concurrency: 8
+  # Single concurrency level
+  levels: "8"
+  # Connection timeout in seconds
+  timeout: 10
+  # Headers to include in requests
+  headers:
+    Accept: application/json
+    Connection: keep-alive
+
+# Server settings
+server:
+  # Minimal warmup time
+  warmup_time: 5
+  # More recovery between tests
+  recovery_time: 10
+  # Server startup timeout
+  startup_timeout: 60
+  # Post-startup stabilization
+  stabilization_time: 5

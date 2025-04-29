@@ -172,3 +172,10 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Other
+.env
+.DS_Store
+results
+package-lock.json
+CLAUDE.md
