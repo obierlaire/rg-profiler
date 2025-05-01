@@ -3,6 +3,7 @@ Framework configuration parser for RG Profiler
 """
 import json
 from pathlib import Path
+import sys
 
 from src.constants import DEFAULT_SERVER_PORT, DEFAULT_SERVER_HOST, DEFAULT_DATABASE_TYPE
 
@@ -32,8 +33,8 @@ def parse_framework_config(framework_dir):
     # Try to load framework configuration
     config_file = framework_dir / "conf.json"
     if not config_file.exists():
-        print(f"ℹ️ No conf.json found for framework, using defaults")
-        return config
+        print(f"❌ No conf.json found for framework: {framework_dir}")
+        sys.exit(1)
     
     try:
         with open(config_file, "r") as f:
@@ -57,7 +58,8 @@ def parse_framework_config(framework_dir):
         print(f"✅ Loaded framework configuration from {config_file}")
     
     except Exception as e:
-        print(f"⚠️ Error reading framework configuration: {e}")
+        print(f"❌ Error reading framework configuration: {e}")
+        sys.exit(1)
     
     return config
 
@@ -74,8 +76,8 @@ def get_requirements_path(framework_dir):
     """
     requirements_file = framework_dir / "requirements.txt"
     if not requirements_file.exists():
-        print(f"⚠️ No requirements.txt found for framework: {framework_dir}")
-        return None
+        print(f"❌ No requirements.txt found for framework: {framework_dir}")
+        sys.exit(1)
     
     return requirements_file
 
@@ -93,7 +95,7 @@ def get_entry_point(framework_dir):
     entry_point = framework_dir / "app.py"
     if not entry_point.exists():
         print(f"❌ No app.py entry point found for framework: {framework_dir}")
-        return None
+        sys.exit(1)
     
     return entry_point
 
@@ -109,8 +111,6 @@ def extract_framework_version(framework_dir):
         Framework version string or None if not found
     """
     requirements_file = get_requirements_path(framework_dir)
-    if not requirements_file:
-        return None
     
     try:
         framework_name = framework_dir.name.lower()
@@ -126,7 +126,11 @@ def extract_framework_version(framework_dir):
                     parts = line.split(">=")
                     if len(parts) == 2:
                         return f">={parts[1]}"
+        
+        print(f"❌ Framework version not found in requirements.txt for: {framework_name}")
+        sys.exit(1)
     except Exception as e:
-        print(f"⚠️ Error extracting framework version: {e}")
+        print(f"❌ Error extracting framework version: {e}")
+        sys.exit(1)
     
     return None

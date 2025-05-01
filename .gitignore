@@ -178,4 +178,6 @@ cython_debug/
 .DS_Store
 results
 package-lock.json
+.claude
 CLAUDE.md
+**/.claude/settings.local.json

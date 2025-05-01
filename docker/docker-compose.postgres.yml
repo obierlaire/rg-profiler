@@ -8,9 +8,6 @@ services:
       POSTGRES_USER: benchmarkdbuser
       POSTGRES_PASSWORD: benchmarkdbpass
       POSTGRES_DB: hello_world
-    # No need to expose ports externally, containers communicate within the network
-    # ports:
-    #   - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U benchmarkdbuser -d hello_world"]
       interval: 5s

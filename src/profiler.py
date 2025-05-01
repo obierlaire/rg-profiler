@@ -1,7 +1,187 @@
 """
-Profiling orchestration for RG Profiler
+Profiling system for web frameworks
 """
-from src.runners.profiler import run_profiling_tests
+import sys
+import time
+from pathlib import Path
 
-# This module now just delegates to the more detailed implementation in src/runners/profiler.py
-# This maintains API compatibility while allowing for refactoring of the implementation details
+from src.constants import MODE_ENERGY, MODE_QUICK
+from src.docker_utils import DockerUtils
+from src.docker.container_manager import ContainerManager
+from src.wrk_manager import WrkManager
+from src.output_manager import save_report, summarize_profiling_results
+from src.energy_manager import EnergyManager
+
+class Profiler:
+    """Profiling system for web frameworks"""
+    
+    @staticmethod
+    def run(container_id, framework_config, config, output_dir, mode):
+        """Run profiling tests based on mode"""
+        print(f"🚀 Starting profiling in {mode} mode...")
+        
+        # Get tests from config
+        from src.config_manager import ConfigManager
+        tests = ConfigManager.get_tests_for_mode(config)
+        
+        # Run appropriate test mode
+        if mode == MODE_ENERGY:
+            success = Profiler._run_energy_tests(container_id, framework_config, config, output_dir, tests)
+        elif mode == MODE_QUICK:
+            success = Profiler._run_quick_tests(container_id, framework_config, config, output_dir, tests)
+        else:
+            success = Profiler._run_standard_tests(container_id, framework_config, config, output_dir, tests)
+            
+        if not success:
+            print("❌ Profiling failed")
+            sys.exit(1)
+            
+        # Generate summary report
+        framework = output_dir.parent.name
+        language = output_dir.parent.parent.name
+        summarize_profiling_results(output_dir, framework, language)
+        
+        print("✅ Profiling completed successfully")
+        return True
+    
+    @staticmethod
+    def _run_standard_tests(container_id, framework_config, config, output_dir, tests):
+        """Run standard profiling tests"""
+        # Verify container_id is valid
+        if not container_id:
+            print("❌ Invalid container ID")
+            sys.exit(1)
+            
+        # Verify framework_config has required fields
+        if "server" not in framework_config or "port" not in framework_config["server"]:
+            print("❌ Framework configuration missing server port")
+            sys.exit(1)
+            
+        # Prepare for testing
+        container_name = DockerUtils.execute_command(
+            container_id, ["hostname"]
+        ).strip()
+        
+        server_port = framework_config["server"]["port"]
+        base_url = f"http://{container_name}:{server_port}"
+        
+        # Run each test
+        for test in tests:
+            # Verify test has required fields
+            if "name" not in test or "endpoint" not in test:
+                print(f"❌ Invalid test configuration: {test}")
+                sys.exit(1)
+                
+            endpoint = test["endpoint"]
+            test_url = f"{base_url}{endpoint}"
+            script = test.get("script", f"{test['name']}.lua")
+            
+            print(f"\n📊 Testing: {test['name']} - {test.get('description', 'No description')}")
+            
+            success = WrkManager.run_test(
+                test_url,
+                script,
+                config["wrk"]["duration"],
+                config["wrk"]["max_concurrency"],
+                config["mode"]
+            )
+            
+            if not success:
+                print(f"⚠️ Test failed for {test['name']}")
+                
+            # Recovery time between tests
+            recovery_time = config.get("server", {}).get("recovery_time", 5)
+            time.sleep(recovery_time)
+        
+        # Shutdown and cleanup
+        ContainerManager.shutdown_framework(container_id, framework_config)
+        
+        # Save container logs
+        logs = DockerUtils.get_container_logs(container_id)
+        Profiler._save_container_logs(logs, output_dir)
+        
+        # Stop container
+        DockerUtils.stop_container(container_id)
+        
+        return True
+    
+    @staticmethod
+    def _run_energy_tests(container_id, framework_config, config, output_dir, tests):
+        """Run energy profiling tests"""
+        # Implementation delegated to energy manager
+        return EnergyManager.run_tests(
+            container_id, 
+            framework_config, 
+            config, 
+            output_dir, 
+            tests
+        )
+    
+    @staticmethod
+    def _run_quick_tests(container_id, framework_config, config, output_dir, tests):
+        """Run quick test - simplified for development"""
+        if not tests:
+            print("❌ No tests defined for quick mode")
+            sys.exit(1)
+            
+        # Just run the first test
+        test = tests[0]
+        
+        # Verify test has required fields
+        if "name" not in test or "endpoint" not in test:
+            print(f"❌ Invalid test configuration: {test}")
+            sys.exit(1)
+            
+        # Verify framework_config has required fields
+        if "server" not in framework_config or "port" not in framework_config["server"]:
+            print("❌ Framework configuration missing server port")
+            sys.exit(1)
+            
+        container_name = DockerUtils.execute_command(
+            container_id, ["hostname"]
+        ).strip()
+        
+        server_port = framework_config["server"]["port"]
+        base_url = f"http://{container_name}:{server_port}"
+        endpoint = test["endpoint"]
+        test_url = f"{base_url}{endpoint}"
+        script = test.get("script", f"{test['name']}.lua")
+        
+        print(f"📊 Testing: {test['name']} - {test.get('description', 'No description')}")
+        
+        success = WrkManager.run_test(
+            test_url,
+            script,
+            config["wrk"]["duration"],
+            config["wrk"]["max_concurrency"],
+            "quick"
+        )
+        
+        if not success:
+            print(f"⚠️ Quick test failed for {test['name']}")
+            sys.exit(1)
+            
+        # Shutdown and cleanup
+        ContainerManager.shutdown_framework(container_id, framework_config)
+        
+        # Save container logs
+        logs = DockerUtils.get_container_logs(container_id)
+        Profiler._save_container_logs(logs, output_dir)
+        
+        # Stop container
+        DockerUtils.stop_container(container_id)
+        
+        return True
+    
+    @staticmethod
+    def _save_container_logs(logs, output_dir):
+        """Save container logs to file"""
+        logs_path = output_dir / "container.log"
+        try:
+            with open(logs_path, 'w') as f:
+                f.write(logs)
+            print(f"✅ Container logs saved to {logs_path}")
+            return logs_path
+        except Exception as e:
+            print(f"⚠️ Error saving container logs: {e}")
+            sys.exit(1)

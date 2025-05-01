@@ -9,7 +9,7 @@ A comprehensive profiling system for web frameworks, measuring both performance 
 - Docker-based testing for consistent environments
 - Support for PostgreSQL, MySQL, and MongoDB databases
 - Standardized endpoints across frameworks for fair comparison
-- Multiple profiling modes (standard, profile, energy)
+- Multiple profiling modes (profile, energy, standard, quick)
 - Statistical analysis for energy measurements
 
 ## Installation
@@ -35,20 +35,15 @@ A comprehensive profiling system for web frameworks, measuring both performance 
    export RG_FRAMEWORKS_ROOT=/path/to/rg-profiler-frameworks
    ```
 
-4. Install WRK if not already installed:
+4. Build the required Docker images:
 
    ```bash
-   # Ubuntu/Debian
-   sudo apt-get install -y build-essential libssl-dev git
-   git clone https://github.com/wg/wrk.git
-   cd wrk
-   make
-   sudo cp wrk /usr/local/bin
+   make all
    ```
 
 ## Usage
 
-The RG Profiler offers three distinct modes of operation:
+The RG Profiler offers four distinct modes of operation:
 
 ### Profile Mode (Default)
 
@@ -84,12 +79,27 @@ Energy mode options:
 ./run.py --framework flask --cpu-isolation on
 ```
 
+For testing multiple frameworks and generating comparison reports:
+
+```bash
+# Run energy tests on multiple frameworks
+./run_energy_tests.py --frameworks flask django fastapi --runs 3
+```
+
 ### Standard Mode
 
 Combines both profiling and energy measurement:
 
 ```bash
 ./run.py --framework flask --mode standard
+```
+
+### Quick Mode
+
+Minimal test for development and debugging:
+
+```bash
+./run.py --framework flask --mode quick
 ```
 
 Additional options for all modes:
@@ -104,6 +114,17 @@ Additional options for all modes:
 # Test with a different language (future support)
 ./run.py --framework express --language javascript
 ```
+
+## Energy Visualization
+
+The energy visualization tools can generate detailed reports comparing frameworks:
+
+```bash
+# Generate energy report from existing results
+python -m src.visualization.energy_viz --results-dir results --output-dir reports
+```
+
+This generates an HTML report with comparative charts and detailed statistics.
 
 ## Endpoint Definitions
 
@@ -128,7 +149,18 @@ The profiler tests a standard set of endpoints across all frameworks:
 - `/memory-heavy` - Memory-intensive operation
 - `/shutdown` - Special endpoint for graceful termination
 
-## Output
+## Energy-Specific Endpoints
+
+For energy measurements, specialized endpoints are used:
+
+- `/json` - JSON serialization with fixed workload
+- `/plaintext` - Plain text response with deterministic content
+- `/db` - Single database query with consistent patterns
+- `/template-simple` - Simple template with fixed content
+- `/cpu-intensive` - Fixed complexity CPU operations
+- `/memory-heavy` - Fixed memory allocation size
+
+## Output Structure
 
 Results are stored in a structured directory format:
 
@@ -140,13 +172,20 @@ results/
 │   │   │   ├── scalene/
 │   │   │   │   └── scalene.json          # Scalene profiling results
 │   │   │   ├── energy/
+│   │   │   │   ├── emissions.csv         # Raw CodeCarbon data
 │   │   │   │   └── energy.json           # Energy measurement results
 │   │   │   ├── runs/
 │   │   │   │   ├── run_1/                # Individual run data for energy mode
 │   │   │   │   ├── run_2/
 │   │   │   │   └── run_3/
 │   │   │   ├── container.log             # Docker container logs
+│   │   │   ├── energy_runs.json          # Statistical analysis across runs
 │   │   │   └── summary.json              # Overall results summary
+│   │   │   
+│   │   ├── reports/                      # Generated reports
+│   │   │   ├── energy_comparison.png     # Comparative visualization
+│   │   │   ├── python_flask_energy.png   # Framework-specific visualization
+│   │   │   └── energy_report.html        # Comprehensive HTML report
 ```
 
 ## Framework Implementation
@@ -181,6 +220,29 @@ Each `conf.json` can include optional configurations:
   }
 }
 ```
+
+## Architecture
+
+The RG Profiler uses a fully containerized approach for consistent measurements:
+
+1. **Docker Network**: All components (database, framework, and WRK) run in the same Docker network for reliable connectivity
+2. **Database Containers**: PostgreSQL, MySQL, and MongoDB are run in Docker containers
+3. **Framework Containers**: Each framework implementation is built into a Docker image and run in a container
+4. **WRK Container**: The benchmarking tool is also containerized for consistent testing
+
+This containerized approach offers several advantages:
+- Eliminates networking issues between components
+- Provides consistent environments across different systems
+- Makes it easy to test with different database types
+- Ensures reproducible results
+
+## Documentation
+
+For more detailed information, see the following documentation:
+
+- [Energy Mode](ENERGY_MODE.md) - Detailed documentation on energy measurement
+- [Framework API](PROFILING.md) - API specifications for implementing frameworks
+- [Architecture](docs/ARCHITECTURE.md) - Technical overview of the system architecture
 
 ## License
 

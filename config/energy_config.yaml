@@ -3,35 +3,35 @@ mode: energy
 
 # Test definitions - endpoints to test and their scripts
 tests:
-  - name: json
+  - name: json_fixed
     endpoint: /json
-    script: json.lua
-    description: "JSON serialization test"
+    script: energy_json.lua
+    description: "JSON serialization test for energy measurement"
     
-  - name: plaintext
-    endpoint: /plaintext
-    script: basic.lua
-    description: "Plaintext response test"
+  # - name: plaintext_fixed
+  #   endpoint: /plaintext
+  #   script: energy_plaintext.lua
+  #   description: "Plaintext response test for energy measurement"
     
-  - name: db
-    endpoint: /db
-    script: db.lua
-    description: "Database query test"
+  # - name: db_fixed
+  #   endpoint: /db
+  #   script: energy_db.lua
+  #   description: "Database query test for energy measurement"
     
-  - name: template_simple
-    endpoint: /template-simple
-    script: template_simple.lua
-    description: "Simple template rendering test"
+  # - name: template_fixed
+  #   endpoint: /template-simple
+  #   script: energy_template.lua
+  #   description: "Simple template rendering test for energy measurement"
     
-  - name: cpu_intensive
-    endpoint: /cpu-intensive
-    script: cpu.lua
-    description: "CPU-intensive computation test"
+  # - name: cpu_intensive
+  #   endpoint: /cpu-intensive
+  #   script: energy_cpu.lua
+  #   description: "CPU-intensive computation test for energy measurement"
     
-  - name: memory_heavy
-    endpoint: /memory-heavy
-    script: memory.lua
-    description: "Memory-intensive operation test"
+  # - name: memory_heavy
+  #   endpoint: /memory-heavy
+  #   script: energy_memory.lua
+  #   description: "Memory-intensive operation test for energy measurement"
 
 # Energy measurement settings
 energy:
@@ -66,7 +66,7 @@ profiling:
 # WRK settings optimized for reproducible energy measurements
 wrk:
   # Longer duration for stable measurements
-  duration: 45
+  duration: 10
   # No pipelining for consistent connection behavior
   pipeline: 1
   # Fixed concurrency - no ramping

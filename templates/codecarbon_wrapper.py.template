@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""
+CodeCarbon wrapper for energy measurement in RG Profiler
+
+This script wraps the framework server to enable energy tracking with CodeCarbon.
+It ensures proper start and shutdown of the tracker to generate emissions data.
+"""
+import atexit
+import os
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+from codecarbon import EmissionsTracker
+
+# Global tracker reference
+tracker = None
+
+# Flag to track if we're in the process of shutting down
+shutting_down = False
+
+
+def signal_handler(sig, frame):
+    """Gracefully stop tracking on signals"""
+    global shutting_down
+
+    if shutting_down:
+        return
+
+    shutting_down = True
+    print(f"🛑 Received signal {sig}, saving energy data before exit...")
+    stop_tracking()
+    sys.exit(0)
+
+
+def stop_tracking():
+    """Stop energy tracking if active"""
+    global tracker
+    if tracker:
+        try:
+            print("⏹️ Stopping energy tracking...")
+            emissions = tracker.stop()
+            print(
+                f"✅ Energy tracking stopped. Total emissions: {emissions*1000000:.2f} mgCO2e")
+
+            # Give time for CodeCarbon to write its file
+            time.sleep(3)
+
+            # Check if file was created
+            output_dir = os.environ.get(
+                "CODECARBON_OUTPUT_DIR", "/output/energy")
+            output_file = os.environ.get(
+                "CODECARBON_OUTPUT_FILE", "emissions.csv")
+            file_path = Path(output_dir) / output_file
+
+            if file_path.exists():
+                print(f"✅ Emissions data saved to: {file_path}")
+            else:
+                print(f"⚠️ Warning: Emissions file not found at {file_path}")
+        except Exception as e:
+            print(f"❌ Error stopping tracker: {e}")
+
+
+# Register the exit handler
+atexit.register(stop_tracking)
+
+# Register signal handlers
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
+
+
+def start_tracking():
+    """Start energy tracking with CodeCarbon"""
+    global tracker
+
+    # Get configuration from environment variables
+    output_dir = os.environ.get("CODECARBON_OUTPUT_DIR", "/output/energy")
+    output_file = os.environ.get("CODECARBON_OUTPUT_FILE", "emissions.csv")
+    save_interval = int(os.environ.get("CODECARBON_SAVE_INTERVAL", "15"))
+    measure_power_secs = float(os.environ.get(
+        "CODECARBON_MEASURE_POWER_SECS", "0.5"))
+
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Configure and start the tracker
+    print(f"▶️ Starting energy tracking with CodeCarbon...")
+    print(f"   - Output directory: {output_dir}")
+    print(f"   - Output file: {output_file}")
+    print(f"   - Save interval: {save_interval} seconds")
+    print(f"   - Measure power interval: {measure_power_secs} seconds")
+
+    tracker = EmissionsTracker(
+        output_dir=output_dir,
+        output_file=output_file,
+        save_to_file=True,
+        save_to_api=False,
+        log_level="info",
+        tracking_mode="process",
+        measure_power_secs=measure_power_secs,
+    )
+
+    tracker.start()
+    print("✅ Energy tracking started")
+
+    return tracker
+
+
+def handle_server_termination(server_process):
+    """Handle proper shutdown when server process terminates"""
+    def check_process():
+        if server_process.poll() is not None:
+            print(
+                f"🛑 Server process exited with code {server_process.returncode}")
+            stop_tracking()
+            sys.exit(server_process.returncode)
+
+    return check_process
+
+
+if __name__ == "__main__":
+    # Ensure we have the correct number of arguments
+    if len(sys.argv) < 2:
+        print("❌ Usage: python codecarbon_wrapper.py <command> [args...]")
+        sys.exit(1)
+
+    # Start energy tracking
+    tracker = start_tracking()
+
+    try:
+        # Execute the framework server
+        command = sys.argv[1:]
+        print(f"🚀 Executing server: {' '.join(command)}")
+
+        # Using subprocess to run the server (allows us to monitor it)
+        server_process = subprocess.Popen(
+            command,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            text=True,
+            bufsize=1
+        )
+
+        # Set up a check to monitor the server process
+        termination_handler = handle_server_termination(server_process)
+
+        # Wait for server to finish
+        while server_process.poll() is None:
+            time.sleep(1)
+
+        # Server has terminated, handle cleanup
+        exit_code = server_process.returncode
+        print(f"🛑 Server process exited with code {exit_code}")
+        stop_tracking()
+        sys.exit(exit_code)
+
+    except Exception as e:
+        print(f"❌ Error executing server: {e}")
+        stop_tracking()
+        sys.exit(1)

@@ -29,10 +29,12 @@ db_name = os.environ.get('DB_NAME', 'hello_world')
 
 # Get server configuration
 server_host = config.get('server', {}).get('host', '0.0.0.0')
-server_port = int(config.get('server', {}).get('port', os.environ.get('SERVER_PORT', 8080)))
+server_port = int(config.get('server', {}).get(
+    'port', os.environ.get('SERVER_PORT', 8080)))
 
 # Flag to track if we should shutdown
 shutdown_requested = False
+
 
 def signal_handler(sig, frame):
     """Handle termination signals gracefully"""
@@ -40,6 +42,7 @@ def signal_handler(sig, frame):
     print(f"Received signal {sig}, initiating graceful shutdown...")
     shutdown_requested = True
     sys.exit(0)
+
 
 # Register signal handlers
 signal.signal(signal.SIGTERM, signal_handler)
@@ -49,61 +52,82 @@ signal.signal(signal.SIGINT, signal_handler)
 app = create_app(db_type, db_host, db_port, db_user, db_pass, db_name)
 
 # Add shutdown endpoint
+
+
 @app.route('/shutdown', methods=['GET'])
 def shutdown():
-    """Endpoint to initiate graceful server shutdown"""
+    """Endpoint to initiate graceful server shutdown with energy data saving"""
     global shutdown_requested
     shutdown_requested = True
+
     print("Shutdown requested via /shutdown endpoint")
-    
-    response = json.dumps({"status": "shutting_down", "timestamp": datetime.now().isoformat()})
-    
+
+    response = json.dumps({
+        "status": "shutting_down",
+        "timestamp": datetime.now().isoformat()
+    })
+
     # Use Werkzeug's shutdown function if available
     from flask import request
     shutdown_func = request.environ.get('werkzeug.server.shutdown')
     if shutdown_func is not None:
         print("Using Werkzeug shutdown function")
         # Schedule shutdown after response is sent
+
         def shutdown_server():
+            # Allow time for response to be sent
             import time
-            time.sleep(0.5)  # Short delay to ensure response is sent
-            shutdown_func()
-            
+            time.sleep(1)
+
+            # Send SIGTERM to self
+            import os
+            import signal
+            pid = os.getpid()
+
+            # Log before sending signal
+            print(f"Sending SIGTERM to self (PID: {pid})")
+
+            # Use os.kill to send signal to self
+            os.kill(pid, signal.SIGTERM)
+
         import threading
         threading.Thread(target=shutdown_server).start()
     else:
         # Fallback to os._exit
-        print("Werkzeug shutdown function not available, using os._exit")
+        print("Werkzeug shutdown function not available, using os.kill")
+
         def trigger_shutdown():
-            import time
+            import os
             import signal
-            time.sleep(0.5)  # Short delay to ensure response is sent
-            
-            # Try sending SIGINT to self first (more graceful)
-            try:
-                import os
-                pid = os.getpid()
-                os.kill(pid, signal.SIGINT)
-                time.sleep(0.5)  # Wait for signal to be processed
-            except:
-                pass
-                
-            # If still running, use os._exit
-            os._exit(0)
-            
+            import time
+
+            # Allow time for response to be sent
+            time.sleep(1)
+
+            # Get own PID
+            pid = os.getpid()
+
+            # Log before sending signal
+            print(f"Sending SIGTERM to self (PID: {pid})")
+
+            # Send SIGTERM to self
+            os.kill(pid, signal.SIGTERM)
+
         import threading
         threading.Thread(target=trigger_shutdown).start()
-    
+
     return response
+
 
 if __name__ == '__main__':
     # Create a test file to verify volume mounting
     os.makedirs("/output", exist_ok=True)
     with open("/output/test-file.txt", "w") as f:
         f.write("Volume mounting is working correctly")
-    
-    print(f"Starting Flask server in {os.environ.get('PROFILING_MODE', 'default')} mode")
+
+    print(
+        f"Starting Flask server in {os.environ.get('PROFILING_MODE', 'default')} mode")
     print(f"Database: {db_type} at {db_host}:{db_port}")
-    
+
     # Run the Flask app
     app.run(host=server_host, port=server_port, threaded=False, debug=False)
