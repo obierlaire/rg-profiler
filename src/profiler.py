@@ -6,10 +6,10 @@ import time
 from pathlib import Path
 
 from src.constants import MODE_ENERGY, MODE_QUICK
-from src.docker_utils import DockerUtils
 from src.docker.container_manager import ContainerManager
+from src.docker.container_operations import ContainerOperations
 from src.wrk_manager import WrkManager
-from src.output_manager import save_report, summarize_profiling_results, save_container_logs
+from src.output_manager import save_report, summarize_profiling_results
 from src.energy_manager import EnergyManager
 
 class Profiler:
@@ -45,25 +45,60 @@ class Profiler:
         return True
     
     @staticmethod
+    def _prepare_test_url(container_id, framework_config):
+        """
+        Prepare base URL for testing from container hostname and port
+        
+        Args:
+            container_id: Container ID
+            framework_config: Framework configuration
+            
+        Returns:
+            Base URL for testing
+        """
+        # Verify framework_config has required fields
+        if "server" not in framework_config or "port" not in framework_config["server"]:
+            print("❌ Framework configuration missing server port")
+            sys.exit(1)
+        
+        container_name = ContainerOperations.get_container_hostname(container_id)
+        server_port = framework_config["server"]["port"]
+        return f"http://{container_name}:{server_port}"
+    
+    @staticmethod
+    def _cleanup_container(container_id, framework_config, output_dir):
+        """
+        Perform container cleanup after testing
+        
+        Args:
+            container_id: Container ID
+            framework_config: Framework configuration
+            output_dir: Output directory for logs
+            
+        Returns:
+            True if cleanup was successful
+        """
+        # Shutdown framework server gracefully
+        ContainerManager.shutdown_framework(container_id, framework_config)
+        
+        # Save container logs
+        ContainerOperations.save_container_logs(container_id, output_dir)
+        
+        # Stop container
+        ContainerManager.stop_container(container_id)
+        
+        return True
+    
+    @staticmethod
     def _run_standard_tests(container_id, framework_config, config, output_dir, tests):
         """Run standard profiling tests"""
         # Verify container_id is valid
         if not container_id:
             print("❌ Invalid container ID")
             sys.exit(1)
-            
-        # Verify framework_config has required fields
-        if "server" not in framework_config or "port" not in framework_config["server"]:
-            print("❌ Framework configuration missing server port")
-            sys.exit(1)
-            
-        # Prepare for testing
-        container_name = DockerUtils.execute_command(
-            container_id, ["hostname"]
-        ).strip()
         
-        server_port = framework_config["server"]["port"]
-        base_url = f"http://{container_name}:{server_port}"
+        # Get base URL for tests
+        base_url = Profiler._prepare_test_url(container_id, framework_config)
         
         # Run each test
         for test in tests:
@@ -93,17 +128,8 @@ class Profiler:
             recovery_time = config.get("server", {}).get("recovery_time", 5)
             time.sleep(recovery_time)
         
-        # Shutdown and cleanup
-        ContainerManager.shutdown_framework(container_id, framework_config)
-        
-        # Save container logs
-        logs = DockerUtils.get_container_logs(container_id)
-        save_container_logs(logs, output_dir)
-        
-        # Stop container
-        DockerUtils.stop_container(container_id)
-        
-        return True
+        # Cleanup container
+        return Profiler._cleanup_container(container_id, framework_config, output_dir)
     
     @staticmethod
     def _run_energy_tests(container_id, framework_config, config, output_dir, tests):
@@ -131,18 +157,11 @@ class Profiler:
         if "name" not in test or "endpoint" not in test:
             print(f"❌ Invalid test configuration: {test}")
             sys.exit(1)
-            
-        # Verify framework_config has required fields
-        if "server" not in framework_config or "port" not in framework_config["server"]:
-            print("❌ Framework configuration missing server port")
-            sys.exit(1)
-            
-        container_name = DockerUtils.execute_command(
-            container_id, ["hostname"]
-        ).strip()
         
-        server_port = framework_config["server"]["port"]
-        base_url = f"http://{container_name}:{server_port}"
+        # Get base URL for tests
+        base_url = Profiler._prepare_test_url(container_id, framework_config)
+        
+        # Run quick test
         endpoint = test["endpoint"]
         test_url = f"{base_url}{endpoint}"
         script = test.get("script", f"{test['name']}.lua")
@@ -160,16 +179,7 @@ class Profiler:
         if not success:
             print(f"⚠️ Quick test failed for {test['name']}")
             sys.exit(1)
-            
-        # Shutdown and cleanup
-        ContainerManager.shutdown_framework(container_id, framework_config)
         
-        # Save container logs
-        logs = DockerUtils.get_container_logs(container_id)
-        save_container_logs(logs, output_dir)
-        
-        # Stop container
-        DockerUtils.stop_container(container_id)
-        
-        return True
+        # Cleanup container
+        return Profiler._cleanup_container(container_id, framework_config, output_dir)
     

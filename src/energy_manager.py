@@ -12,9 +12,8 @@ import numpy as np
 
 from src.constants import PROJECT_ROOT
 from src.docker.container_manager import ContainerManager
-from src.docker_utils import DockerUtils
+from src.docker.container_operations import ContainerOperations
 from src.wrk_manager import WrkManager
-from src.output_manager import save_container_logs
 
 
 class EnergyManager:
@@ -28,9 +27,7 @@ class EnergyManager:
         runs_dir.mkdir(exist_ok=True)
 
         # Get container name for URL construction
-        container_name = DockerUtils.execute_command(
-            container_id, ["hostname"]
-        ).strip()
+        container_name = ContainerOperations.get_container_hostname(container_id)
 
         # Get test parameters
         runs = config.get("energy", {}).get("runs", 3)
@@ -83,16 +80,13 @@ class EnergyManager:
                 print(f"⏳ Waiting {run_interval} seconds before next run...")
                 time.sleep(run_interval)
 
-        # Shutdown and cleanup
+        # Cleanup container
         ContainerManager.shutdown_framework(container_id, framework_config)
-
-        # Save container logs
-        logs = DockerUtils.get_container_logs(container_id)
-        save_container_logs(logs, output_dir)
-
+        ContainerOperations.save_container_logs(container_id, output_dir)
+        
         # Ensure container stops completely in energy mode
         print("🔋 Energy mode: ensuring container is fully stopped")
-        DockerUtils.stop_container(container_id)
+        ContainerManager.stop_container(container_id)
 
         # Process all runs
         EnergyManager.combine_energy_runs(output_dir, runs)
@@ -116,7 +110,7 @@ class EnergyManager:
         """Save energy data for a specific run"""
         try:
             # Make sure the energy directory exists in the container
-            DockerUtils.execute_command(
+            ContainerOperations.execute_command(
                 container_id,
                 ["mkdir", "-p", "/output/energy"]
             )
@@ -125,13 +119,8 @@ class EnergyManager:
             print("🔍 Shutting down server to save energy data...")
             server_port = 8080  # Default server port
 
-            # Execute shutdown request inside container
-            shutdown_result = DockerUtils.execute_command(
-                container_id,
-                ["curl", "-s", "--connect-timeout", "5", "--max-time",
-                    "10", f"http://localhost:{server_port}/shutdown"]
-            )
-            print(f"🔄 Shutdown response: {shutdown_result.strip()}")
+            # Send shutdown signal to server
+            ContainerOperations.send_server_shutdown(container_id, server_port)
 
             # Wait for emissions file to be created (with timeout)
             print("⏳ Waiting for CodeCarbon to save emissions data...")
@@ -142,7 +131,7 @@ class EnergyManager:
             for i in range(max_wait_time):
                 try:
                     # Check if the file exists and has content
-                    file_exists = DockerUtils.execute_command(
+                    file_exists = ContainerOperations.execute_command(
                         container_id,
                         ["bash", "-c",
                             f"test -f {emissions_file} && echo 'exists' || echo 'missing'"]
@@ -150,7 +139,7 @@ class EnergyManager:
 
                     if file_exists == "exists":
                         # Check file size to ensure it has content
-                        file_size = DockerUtils.execute_command(
+                        file_size = ContainerOperations.execute_command(
                             container_id,
                             ["bash", "-c", f"stat -c %s {emissions_file}"]
                         ).strip()
@@ -163,7 +152,7 @@ class EnergyManager:
 
                     # Show directory content occasionally for debugging
                     if i % 5 == 0 or i == max_wait_time - 1:
-                        dir_content = DockerUtils.execute_command(
+                        dir_content = ContainerOperations.execute_command(
                             container_id,
                             ["ls", "-la", "/output/energy"]
                         )
@@ -180,7 +169,7 @@ class EnergyManager:
                 emissions_path = run_dir / "emissions.csv"
 
                 # Get emissions data
-                emissions_content = DockerUtils.execute_command(
+                emissions_content = ContainerOperations.execute_command(
                     container_id,
                     ["cat", container_emissions_path]
                 )

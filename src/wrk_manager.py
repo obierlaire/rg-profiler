@@ -20,7 +20,19 @@ class WrkManager:
     
     @staticmethod
     def get_script_path(script_name, mode):
-        """Get path to a WRK script"""
+        """
+        Get path to a WRK script
+        
+        Args:
+            script_name: Name of the script (with or without .lua extension)
+            mode: Profiling mode
+            
+        Returns:
+            Path to the script
+            
+        Raises:
+            FileNotFoundError: If script not found
+        """
         # Map mode to subdirectory
         mode_dirs = {
             MODE_ENERGY: "energy",
@@ -56,7 +68,19 @@ class WrkManager:
     
     @staticmethod
     def run_test(url, script_name, duration, concurrency, mode):
-        """Run a WRK benchmark test"""
+        """
+        Run a WRK benchmark test
+        
+        Args:
+            url: URL to benchmark
+            script_name: Name of the script to use
+            duration: Test duration in seconds
+            concurrency: Number of concurrent connections
+            mode: Profiling mode
+            
+        Returns:
+            True if test succeeded, False otherwise
+        """
         try:
             # Get WRK script path
             script_path = WrkManager.get_script_path(script_name, mode)
@@ -97,8 +121,8 @@ class WrkManager:
             }
             
             # Run the container
-            client = DockerUtils.get_client()
-            container = client.containers.run(**container_config, stdout=True, stderr=True)
+            print(f"🔄 Starting WRK container...")
+            container = DockerUtils.run_container(**container_config, stdout=True, stderr=True)
             
             # Print output
             output = container.decode('utf-8') if isinstance(container, bytes) else str(container)

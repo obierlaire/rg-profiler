@@ -6,9 +6,8 @@ from pathlib import Path
 
 from src.cli import parse_args
 from src.config_manager import ConfigManager
-from src.constants import PROJECT_ROOT, FRAMEWORKS_ROOT
+from src.constants import PROJECT_ROOT, FRAMEWORKS_ROOT, CONTAINER_NAME_PREFIX
 from src.database_manager import DatabaseManager
-from src.docker_utils import DockerUtils
 from src.docker.image_builder import ImageBuilder
 from src.docker.container_manager import ContainerManager
 from src.output_manager import setup_output_directory
@@ -19,7 +18,7 @@ from src.energy_manager import EnergyManager
 def main():
     """Main execution function for RG Profiler"""
     # Check for required Docker images
-    DockerUtils.check_required_images()
+    check_required_images()
     
     # Parse command line arguments
     args = parse_args()
@@ -68,6 +67,33 @@ def main():
         output_dir,
         args.mode
     )
+    
+def check_required_images():
+    """Check if all required Docker images exist"""
+    required_images = [
+        f"{CONTAINER_NAME_PREFIX}-python-base",
+        f"{CONTAINER_NAME_PREFIX}-wrk",
+        f"{CONTAINER_NAME_PREFIX}-postgres",
+        f"{CONTAINER_NAME_PREFIX}-mysql",
+        f"{CONTAINER_NAME_PREFIX}-mongodb"
+    ]
+    
+    missing_images = []
+    
+    for image in required_images:
+        if not ImageBuilder.check_image_exists(image):
+            missing_images.append(image)
+    
+    if missing_images:
+        print("❌ Required Docker images are missing:")
+        for image in missing_images:
+            print(f"  - {image}")
+        print("\nPlease run the following commands to build the required images:")
+        print("  make all              # Build all required images")
+        print("  make start-databases  # Start database containers")
+        sys.exit(1)
+    
+    return True
 
 def get_framework_dir(framework, language="python"):
     """Get the framework directory and validate it exists"""

@@ -1,5 +1,8 @@
 """
 Container management for RG Profiler
+
+This module handles the lifecycle of Docker containers for framework profiling,
+including creation, startup, health checking, and graceful shutdown.
 """
 import sys
 import time
@@ -8,30 +11,39 @@ from pathlib import Path
 import docker
 from src.constants import DEFAULT_SERVER_PORT, DEFAULT_STARTUP_TIMEOUT, DOCKER_NETWORK_NAME
 from src.docker_utils import DockerUtils
+from src.docker.container_operations import ContainerOperations
 
 
 class ContainerManager:
-    """Manages Docker containers for frameworks"""
+    """
+    Container lifecycle management for Docker containers
+    
+    This class handles the complete lifecycle of Docker containers including
+    creation, startup, health checking, and graceful shutdown.
+    """
 
     @staticmethod
-    def run_container(image_name, output_dir, framework_config, mode, env_vars=None):
-        """Run framework container with profiling enabled"""
-        client = DockerUtils.get_client()
-        network = DockerUtils.create_network()
-
+    def create_container(image_name, output_dir, framework_config, mode, env_vars=None):
+        """
+        Create and configure a framework container
+        
+        Args:
+            image_name: Docker image to run
+            output_dir: Directory to mount for output
+            framework_config: Framework configuration
+            mode: Profiling mode
+            env_vars: Additional environment variables
+            
+        Returns:
+            Container name
+            
+        Raises:
+            SystemExit: If container creation fails
+        """
         container_name = f"rg-profiler-{image_name.split(':')[0]}"
-
+        
         # Stop any existing container with the same name
-        try:
-            existing = client.containers.get(container_name)
-            existing.stop(timeout=5)
-            existing.remove()
-            print(f"✅ Removed existing container: {container_name}")
-        except docker.errors.NotFound:
-            pass
-        except Exception as e:
-            print(f"❌ Error removing existing container: {e}")
-            sys.exit(1)
+        ContainerManager.stop_container_if_exists(container_name)
 
         # Prepare mount point for output directory
         volumes = {
@@ -44,6 +56,25 @@ class ContainerManager:
             sys.exit(1)
 
         # Prepare environment variables
+        environment = ContainerManager._prepare_environment(framework_config, mode, env_vars)
+
+        print(f"⚙️ Container configured: {container_name}")
+        return container_name, volumes, environment
+
+    @staticmethod
+    def _prepare_environment(framework_config, mode, env_vars=None):
+        """
+        Prepare environment variables for container
+        
+        Args:
+            framework_config: Framework configuration
+            mode: Profiling mode
+            env_vars: Additional environment variables
+            
+        Returns:
+            Dictionary of environment variables
+        """
+        # Base environment variables
         environment = {
             "PROFILING_MODE": mode,
             "DB_TYPE": framework_config["database"]["type"],
@@ -69,11 +100,44 @@ class ContainerManager:
         # Add additional environment variables if provided
         if env_vars:
             environment.update(env_vars)
+            
+        return environment
+
+    @staticmethod
+    def run_container(image_name, output_dir, framework_config, mode, env_vars=None):
+        """
+        Create and run a framework container
+        
+        Args:
+            image_name: Docker image to run
+            output_dir: Directory to mount for output
+            framework_config: Framework configuration
+            mode: Profiling mode
+            env_vars: Additional environment variables
+            
+        Returns:
+            Container ID
+            
+        Raises:
+            SystemExit: If container creation or startup fails
+        """
+        # Ensure Docker network exists
+        networks = DockerUtils.list_networks(names=[DOCKER_NETWORK_NAME])
+        if not networks:
+            DockerUtils.create_network(DOCKER_NETWORK_NAME)
+            print(f"✅ Created Docker network: {DOCKER_NETWORK_NAME}")
+        else:
+            print(f"✅ Using existing network: {DOCKER_NETWORK_NAME}")
+        
+        # Configure container
+        container_name, volumes, environment = ContainerManager.create_container(
+            image_name, output_dir, framework_config, mode, env_vars
+        )
 
         try:
-            # Run the container - no port exposure needed for internal network communication
+            # Run the container
             print(f"🚀 Starting container: {container_name}")
-            container = client.containers.run(
+            container = DockerUtils.run_container(
                 image_name,
                 name=container_name,
                 detach=True,
@@ -88,7 +152,7 @@ class ContainerManager:
             if ContainerManager.wait_for_container_ready(container.id, framework_config):
                 return container.id
             else:
-                DockerUtils.stop_container(container.id)
+                ContainerManager.stop_container(container.id)
                 print("❌ Container failed to become ready")
                 sys.exit(1)
 
@@ -97,10 +161,72 @@ class ContainerManager:
             sys.exit(1)
 
     @staticmethod
+    def stop_container_if_exists(container_name):
+        """
+        Stop and remove a container if it exists
+        
+        Args:
+            container_name: Name of the container
+            
+        Returns:
+            True if container was stopped, False if it didn't exist
+        """
+        try:
+            container = DockerUtils.get_container(container_name)
+            print(f"🛑 Stopping existing container: {container_name}")
+            container.stop(timeout=5)
+            print(f"🗑️ Removing container: {container_name}")
+            container.remove()
+            print(f"✅ Removed existing container: {container_name}")
+            return True
+        except docker.errors.NotFound:
+            return False
+        except Exception as e:
+            print(f"❌ Error removing existing container: {e}")
+            sys.exit(1)
+
+    @staticmethod
+    def stop_container(container_id_or_name):
+        """
+        Stop and remove a Docker container
+        
+        Args:
+            container_id_or_name: Container ID or name
+            
+        Returns:
+            True if container was stopped successfully
+            
+        Raises:
+            SystemExit: If container stop fails
+        """
+        try:
+            container = DockerUtils.get_container(container_id_or_name)
+            print(f"🛑 Stopping container: {container.name}")
+            container.stop(timeout=10)
+            print(f"🗑️ Removing container: {container.name}")
+            container.remove()
+            return True
+        except docker.errors.NotFound:
+            print(f"Container {container_id_or_name} not found (already removed)")
+            return True
+        except Exception as e:
+            print(f"❌ Error stopping container: {e}")
+            sys.exit(1)
+
+    @staticmethod
     def wait_for_container_ready(container_id, framework_config, timeout=DEFAULT_STARTUP_TIMEOUT):
-        """Wait for the container to be ready to receive requests"""
-        client = DockerUtils.get_client()
-        server_port = framework_config.get("server", {}).get("port", 8080)
+        """
+        Wait for the container to be ready to receive requests
+        
+        Args:
+            container_id: Container ID
+            framework_config: Framework configuration
+            timeout: Maximum time to wait in seconds
+            
+        Returns:
+            True if container is ready, False otherwise
+        """
+        server_port = framework_config.get("server", {}).get("port", DEFAULT_SERVER_PORT)
         
         print(f"⏳ Waiting for framework server to be ready...")
         
@@ -111,16 +237,13 @@ class ContainerManager:
         while time.time() - start_time < timeout:
             # Check if container is still running
             try:
-                container = client.containers.get(container_id)
+                container = DockerUtils.get_container(container_id)
                 if container.status != "running":
                     print(f"❌ Container stopped with status: {container.status}")
                     return False
                 
-                # Try HTTP request to check if server is responding
-                curl_cmd = f"curl -s --connect-timeout 1 --max-time 2 http://127.0.0.1:{server_port}/"
-                result = DockerUtils.execute_command(container_id, ["sh", "-c", curl_cmd], check_exit_code=False)
-                
-                if result.strip():
+                # Check if server is responding
+                if ContainerOperations.check_server_health(container_id, server_port):
                     print(f"✅ Server is ready")
                     return True
                 
@@ -137,7 +260,19 @@ class ContainerManager:
 
     @staticmethod
     def shutdown_framework(container_id, framework_config):
-        """Shutdown framework server using /shutdown endpoint"""
+        """
+        Shutdown framework server using /shutdown endpoint
+        
+        Args:
+            container_id: Container ID
+            framework_config: Framework configuration
+            
+        Returns:
+            True if server shut down gracefully, False otherwise
+            
+        Raises:
+            SystemExit: If shutdown fails
+        """
         # Ensure server port is specified
         if "server" not in framework_config or "port" not in framework_config["server"]:
             print(f"❌ Server port not specified in framework configuration")
@@ -145,23 +280,14 @@ class ContainerManager:
             
         server_port = framework_config["server"]["port"]
 
-        print(f"🛑 Sending shutdown signal to framework...")
+        # Send shutdown signal to server
+        ContainerOperations.send_server_shutdown(container_id, server_port)
 
-        # Execute curl in container to hit shutdown endpoint
+        # Wait for container to stop
         try:
-            # Use 127.0.0.1 to refer to the container itself
-            curl_cmd = f"curl -s --connect-timeout 1 --max-time 2 http://127.0.0.1:{server_port}/shutdown"
-            print(f"🔍 Executing shutdown command: {curl_cmd}")
-            
-            result = DockerUtils.execute_command(container_id, ["sh", "-c", curl_cmd], check_exit_code=False)
-            if result.strip():
-                print(f"🔄 Shutdown response: {result.strip()}")
-
-            # Wait for container to stop
-            client = DockerUtils.get_client()
             for i in range(10):
                 try:
-                    container = client.containers.get(container_id)
+                    container = DockerUtils.get_container(container_id)
                     if container.status != "running":
                         print("✅ Server shutdown gracefully")
                         return True
@@ -173,10 +299,10 @@ class ContainerManager:
                 time.sleep(1)
 
             print("⚠️ Container didn't shutdown gracefully, forcing stop")
-            DockerUtils.stop_container(container_id)
+            ContainerManager.stop_container(container_id)
             return False
 
         except Exception as e:
             print(f"❌ Error during graceful shutdown: {e}")
-            DockerUtils.stop_container(container_id)
+            ContainerManager.stop_container(container_id)
             sys.exit(1)

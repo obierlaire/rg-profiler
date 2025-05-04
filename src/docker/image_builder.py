@@ -1,11 +1,14 @@
 """
 Docker image building utilities for RG Profiler
+
+This module handles building Docker images for framework containers.
 """
 import os
 import shutil
 import sys
 import tempfile
 from pathlib import Path
+import docker
 
 from src.constants import (
     CONTAINER_NAME_PREFIX,
@@ -20,21 +23,58 @@ from src.template_manager import TemplateManager
 
 
 class ImageBuilder:
-    """Builds Docker images for frameworks"""
+    """
+    Docker image builder for frameworks
+    
+    This class handles building Docker images for framework containers.
+    """
+
+    @staticmethod
+    def check_image_exists(image_name):
+        """
+        Check if a Docker image exists
+        
+        Args:
+            image_name: Name of the image to check
+            
+        Returns:
+            True if the image exists, False otherwise
+        """
+        try:
+            DockerUtils.get_image(image_name)
+            return True
+        except docker.errors.ImageNotFound:
+            return False
+        except Exception:
+            return False
 
     @staticmethod
     def build_framework_image(framework_dir, image_name, db_type, mode):
-        """Build Docker image for a framework"""
+        """
+        Build Docker image for a framework
+        
+        Args:
+            framework_dir: Directory containing framework files
+            image_name: Name for the built image
+            db_type: Database type to use
+            mode: Profiling mode
+            
+        Returns:
+            True if the image was built successfully
+            
+        Raises:
+            SystemExit: If image building fails
+        """
         # Check required base images
         base_image = f"{CONTAINER_NAME_PREFIX}-python-base"
         db_image = f"{CONTAINER_NAME_PREFIX}-{db_type}"
 
-        if not DockerUtils.check_image_exists(base_image):
+        if not ImageBuilder.check_image_exists(base_image):
             print(f"❌ Required base image not found: {base_image}")
             print(f"Please run 'make python-base' to build the Python base image")
             sys.exit(1)
 
-        if not DockerUtils.check_image_exists(db_image):
+        if not ImageBuilder.check_image_exists(db_image):
             print(f"❌ Required database image not found: {db_image}")
             print(f"Please run 'make {db_type}' to build the database image")
             sys.exit(1)
@@ -135,11 +175,10 @@ RUN chmod +x /app/codecarbon_wrapper.py"""
 
             # Build the image
             try:
-                client = DockerUtils.get_client()
                 print(f"🔨 Building image: {image_name}")
 
                 # Use docker-py's API to build the image
-                image, logs = client.images.build(
+                image, logs = DockerUtils.build_image(
                     path=temp_dir,
                     tag=image_name,
                     dockerfile=str(dockerfile_path.relative_to(temp_dir)),
