@@ -11,6 +11,7 @@ import docker
 from src.constants import DEFAULT_SERVER_PORT
 from src.docker_utils import DockerUtils
 from src.output_manager import save_container_logs
+from src.logger import logger
 
 class ContainerOperations:
     """
@@ -41,15 +42,15 @@ class ContainerOperations:
             result = container.exec_run(command)
             
             if check_exit_code and result.exit_code != 0:
-                print(f"⚠️ Command returned non-zero exit code: {result.exit_code}")
-                print(f"Command: {command}")
+                logger.warning(f"Command returned non-zero exit code: {result.exit_code}")
+                logger.warning(f"Command: {command}")
                 
             return result.output.decode('utf-8')
         except docker.errors.NotFound:
-            print(f"❌ Container {container_id} not found")
+            logger.error(f"Container {container_id} not found")
             raise
         except Exception as e:
-            print(f"❌ Error executing command in container: {e}")
+            logger.error(f"Error executing command in container: {e}")
             raise
     
     @staticmethod
@@ -71,10 +72,10 @@ class ContainerOperations:
             container = DockerUtils.get_container(container_id)
             return container.logs(tail=tail).decode('utf-8')
         except docker.errors.NotFound:
-            print(f"❌ Container {container_id} not found")
+            logger.error(f"Container {container_id} not found")
             sys.exit(1)
         except Exception as e:
-            print(f"❌ Error getting container logs: {e}")
+            logger.error(f"Error getting container logs: {e}")
             sys.exit(1)
     
     @staticmethod
@@ -145,18 +146,18 @@ class ContainerOperations:
             True if shutdown succeeded, False otherwise
         """
         try:
-            print(f"🛑 Sending shutdown signal to server...")
+            logger.info("🛑 Sending shutdown signal to server...")
             curl_cmd = f"curl -s --connect-timeout 1 --max-time 2 http://127.0.0.1:{port}/shutdown"
             result = ContainerOperations.execute_command(
                 container_id, ["sh", "-c", curl_cmd], check_exit_code=False
             )
             
             if result.strip():
-                print(f"🔄 Shutdown response: {result.strip()}")
+                logger.info(f"🔄 Shutdown response: {result.strip()}")
             
             return True
         except Exception as e:
-            print(f"⚠️ Error sending shutdown signal: {e}")
+            logger.warning(f"Error sending shutdown signal: {e}")
             return False
     
     @staticmethod
@@ -196,7 +197,7 @@ class ContainerOperations:
             
             return True
         except Exception as e:
-            print(f"❌ Error copying file from container: {e}")
+            logger.error(f"Error copying file from container: {e}")
             return False
     
     @staticmethod
@@ -237,5 +238,5 @@ class ContainerOperations:
             
             return True
         except Exception as e:
-            print(f"❌ Error copying file to container: {e}")
+            logger.error(f"Error copying file to container: {e}")
             return False

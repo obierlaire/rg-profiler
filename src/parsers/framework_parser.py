@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 
 from src.constants import DEFAULT_SERVER_PORT, DEFAULT_SERVER_HOST, DEFAULT_DATABASE_TYPE
+from src.logger import logger
 
 
 def parse_framework_config(framework_dir):
@@ -33,7 +34,7 @@ def parse_framework_config(framework_dir):
     # Try to load framework configuration
     config_file = framework_dir / "conf.json"
     if not config_file.exists():
-        print(f"❌ No conf.json found for framework: {framework_dir}")
+        logger.error(f"No conf.json found for framework: {framework_dir}")
         sys.exit(1)
     
     try:
@@ -55,10 +56,10 @@ def parse_framework_config(framework_dir):
         if "endpoints" in framework_config and isinstance(framework_config["endpoints"], dict):
             config["endpoints"] = framework_config["endpoints"]
         
-        print(f"✅ Loaded framework configuration from {config_file}")
+        logger.success(f"Loaded framework configuration from {config_file}")
     
     except Exception as e:
-        print(f"❌ Error reading framework configuration: {e}")
+        logger.error(f"Error reading framework configuration: {e}")
         sys.exit(1)
     
     return config
@@ -76,7 +77,7 @@ def get_requirements_path(framework_dir):
     """
     requirements_file = framework_dir / "requirements.txt"
     if not requirements_file.exists():
-        print(f"❌ No requirements.txt found for framework: {framework_dir}")
+        logger.error(f"No requirements.txt found for framework: {framework_dir}")
         sys.exit(1)
     
     return requirements_file

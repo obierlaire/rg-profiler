@@ -11,6 +11,7 @@ from src.docker.container_operations import ContainerOperations
 from src.wrk_manager import WrkManager
 from src.output_manager import save_report, summarize_profiling_results
 from src.energy_manager import EnergyManager
+from src.logger import logger
 
 class Profiler:
     """Profiling system for web frameworks"""
@@ -18,7 +19,7 @@ class Profiler:
     @staticmethod
     def run(container_id, framework_config, config, output_dir, mode):
         """Run profiling tests based on mode"""
-        print(f"🚀 Starting profiling in {mode} mode...")
+        logger.start(f"Starting profiling in {mode} mode")
         
         # Get tests from config
         tests = config.get("tests", [])
@@ -29,7 +30,7 @@ class Profiler:
             # Implement endpoint filtering logic if needed
         
         if not tests:
-            print("❌ No tests defined in configuration")
+            logger.error("No tests defined in configuration")
             sys.exit(1)
             
         # Run appropriate test mode
@@ -41,7 +42,7 @@ class Profiler:
             success = Profiler._run_standard_tests(container_id, framework_config, config, output_dir, tests)
             
         if not success:
-            print("❌ Profiling failed")
+            logger.error("Profiling failed")
             sys.exit(1)
             
         # Generate summary report
@@ -49,7 +50,7 @@ class Profiler:
         language = output_dir.parent.parent.name
         summarize_profiling_results(output_dir, framework, language)
         
-        print("✅ Profiling completed successfully")
+        logger.success("Profiling completed successfully")
         return True
     
     @staticmethod
@@ -66,7 +67,7 @@ class Profiler:
         """
         # Verify framework_config has required fields
         if "server" not in framework_config or "port" not in framework_config["server"]:
-            print("❌ Framework configuration missing server port")
+            logger.error("Framework configuration missing server port")
             sys.exit(1)
         
         container_name = ContainerOperations.get_container_hostname(container_id)
@@ -102,7 +103,7 @@ class Profiler:
         """Run standard profiling tests"""
         # Verify container_id is valid
         if not container_id:
-            print("❌ Invalid container ID")
+            logger.error("Invalid container ID")
             sys.exit(1)
         
         # Get base URL for tests
@@ -112,14 +113,14 @@ class Profiler:
         for test in tests:
             # Verify test has required fields
             if "name" not in test or "endpoint" not in test:
-                print(f"❌ Invalid test configuration: {test}")
+                logger.error(f"Invalid test configuration: {test}")
                 sys.exit(1)
                 
             endpoint = test["endpoint"]
             test_url = f"{base_url}{endpoint}"
             script = test.get("script", f"{test['name']}.lua")
             
-            print(f"\n📊 Testing: {test['name']} - {test.get('description', 'No description')}")
+            logger.info(f"📊 Testing: {test['name']} - {test.get('description', 'No description')}")
             
             success = WrkManager.run_test(
                 test_url,
@@ -130,7 +131,7 @@ class Profiler:
             )
             
             if not success:
-                print(f"⚠️ Test failed for {test['name']}")
+                logger.warning(f"Test failed for {test['name']}")
                 
             # Recovery time between tests
             recovery_time = config.get("server", {}).get("recovery_time", 5)
@@ -155,7 +156,7 @@ class Profiler:
     def _run_quick_tests(container_id, framework_config, config, output_dir, tests):
         """Run quick test - simplified for development"""
         if not tests:
-            print("❌ No tests defined for quick mode")
+            logger.error("No tests defined for quick mode")
             sys.exit(1)
             
         # Just run the first test
@@ -163,7 +164,7 @@ class Profiler:
         
         # Verify test has required fields
         if "name" not in test or "endpoint" not in test:
-            print(f"❌ Invalid test configuration: {test}")
+            logger.error(f"Invalid test configuration: {test}")
             sys.exit(1)
         
         # Get base URL for tests
@@ -174,7 +175,7 @@ class Profiler:
         test_url = f"{base_url}{endpoint}"
         script = test.get("script", f"{test['name']}.lua")
         
-        print(f"📊 Testing: {test['name']} - {test.get('description', 'No description')}")
+        logger.info(f"📊 Testing: {test['name']} - {test.get('description', 'No description')}")
         
         success = WrkManager.run_test(
             test_url,
@@ -185,7 +186,7 @@ class Profiler:
         )
         
         if not success:
-            print(f"⚠️ Quick test failed for {test['name']}")
+            logger.error(f"Quick test failed for {test['name']}")
             sys.exit(1)
         
         # Cleanup container

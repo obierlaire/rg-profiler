@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from src.constants import PROJECT_ROOT, FRAMEWORKS_ROOT
+from src.logger import logger
 
 
 def parse_args():
@@ -90,14 +91,14 @@ def parse_args():
 
 def print_environment_info(args):
     """Print environment information"""
-    print(f"🔍 RG Profiler Environment:")
-    print(f"   - Project root: {PROJECT_ROOT}")
-    print(f"   - Frameworks root: {FRAMEWORKS_ROOT}")
-    print(f"   - Framework: {args.framework} ({args.language})")
-    print(f"   - Mode: {args.mode}")
+    logger.info("🔍 RG Profiler Environment:")
+    logger.info(f"   - Project root: {PROJECT_ROOT}")
+    logger.info(f"   - Frameworks root: {FRAMEWORKS_ROOT}")
+    logger.info(f"   - Framework: {args.framework} ({args.language})")
+    logger.info(f"   - Mode: {args.mode}")
     
     framework_dir = FRAMEWORKS_ROOT / args.language / args.framework
     if framework_dir.exists():
-        print(f"   - Framework directory: {framework_dir} ✅")
+        logger.info(f"   - Framework directory: {framework_dir} ✅")
     else:
-        print(f"   - Framework directory: {framework_dir} ❌")
+        logger.info(f"   - Framework directory: {framework_dir} ❌")

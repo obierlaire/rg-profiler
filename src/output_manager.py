@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from src.constants import ENERGY_OUTPUT_FILENAME, OUTPUT_DIR_NAME, PROJECT_ROOT, SCALENE_OUTPUT_FILENAME
+from src.logger import logger
 
 
 def setup_output_directory(framework, language="python"):
@@ -39,7 +40,7 @@ def setup_output_directory(framework, language="python"):
     (output_dir / "energy").mkdir(exist_ok=True)
     (output_dir / "runs").mkdir(exist_ok=True)
 
-    print(f"📁 Created output directory: {output_dir}")
+    logger.info(f"📁 Created output directory: {output_dir}")
     return output_dir
 
 
@@ -183,11 +184,11 @@ def save_report(data, output_path):
         with open(output_path, 'w') as f:
             json.dump(data, f, indent=2)
 
-        print(f"✅ Report saved to {output_path}")
+        logger.success(f"Report saved to {output_path}")
         return True
 
     except Exception as e:
-        print(f"❌ Error saving report: {e}")
+        logger.error(f"Error saving report: {e}")
         return False
 
 
@@ -206,8 +207,8 @@ def save_container_logs(logs, output_dir):
     try:
         with open(logs_path, 'w') as f:
             f.write(logs)
-        print(f"✅ Container logs saved to {logs_path}")
+        logger.success(f"Container logs saved to {logs_path}")
         return logs_path
     except Exception as e:
-        print(f"⚠️ Error saving container logs: {e}")
+        logger.error(f"Error saving container logs: {e}")
         sys.exit(1)

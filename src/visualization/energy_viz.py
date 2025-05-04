@@ -8,6 +8,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from src.logger import logger
+
 
 def plot_energy_comparison(results_dir, frameworks=None, output_file=None):
     """
@@ -24,7 +26,7 @@ def plot_energy_comparison(results_dir, frameworks=None, output_file=None):
     results_dir = Path(results_dir)
     
     if not results_dir.exists():
-        print(f"❌ Results directory not found: {results_dir}")
+        logger.error(f"Results directory not found: {results_dir}")
         return None
     
     # Find all frameworks that have energy data
@@ -86,10 +88,10 @@ def plot_energy_comparison(results_dir, frameworks=None, output_file=None):
                     }
             
             except Exception as e:
-                print(f"⚠️ Error processing {energy_file}: {e}")
+                logger.warning(f"Error processing {energy_file}: {e}")
     
     if not framework_data:
-        print("❌ No energy data found for any frameworks")
+        logger.error("No energy data found for any frameworks")
         return None
     
     # Create comparative visualization
@@ -160,7 +162,7 @@ def _create_energy_plot(framework_data, output_file=None):
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path, bbox_inches='tight', dpi=300)
-        print(f"✅ Energy plot saved to {output_path}")
+        logger.success(f"Energy plot saved to {output_path}")
         plt.close(fig)
         return output_path
     else:
@@ -182,18 +184,18 @@ def plot_energy_metrics(energy_runs_file, output_file=None):
     energy_runs_file = Path(energy_runs_file)
     
     if not energy_runs_file.exists():
-        print(f"❌ Energy runs file not found: {energy_runs_file}")
+        logger.error(f"Energy runs file not found: {energy_runs_file}")
         return None
     
     try:
         with open(energy_runs_file, 'r') as f:
             data = json.load(f)
     except Exception as e:
-        print(f"❌ Error reading energy runs file: {e}")
+        logger.error(f"Error reading energy runs file: {e}")
         return None
     
     if "statistics" not in data or "individual_runs" not in data:
-        print("❌ Energy runs file does not contain required data")
+        logger.error("Energy runs file does not contain required data")
         return None
     
     # Extract statistics
@@ -297,7 +299,7 @@ def plot_energy_metrics(energy_runs_file, output_file=None):
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path, bbox_inches='tight', dpi=300)
-        print(f"✅ Energy metrics plot saved to {output_path}")
+        logger.success(f"Energy metrics plot saved to {output_path}")
         plt.close(fig)
         return output_path
     else:
@@ -448,10 +450,10 @@ def _generate_html_report(results_dir, output_file, frameworks=None):
                     }
             
             except Exception as e:
-                print(f"⚠️ Error processing {energy_file}: {e}")
+                logger.warning(f"Error processing {energy_file}: {e}")
     
     if not framework_data:
-        print("❌ No energy data found for any frameworks")
+        logger.error("No energy data found for any frameworks")
         return None
     
     # Sort frameworks by energy consumption
@@ -464,7 +466,7 @@ def _generate_html_report(results_dir, output_file, frameworks=None):
     with open(output_file, 'w') as f:
         f.write(html_content)
     
-    print(f"✅ HTML energy report saved to {output_file}")
+    logger.success(f"HTML energy report saved to {output_file}")
     return output_file
 
 

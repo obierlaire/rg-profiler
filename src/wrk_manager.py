@@ -14,6 +14,7 @@ from src.constants import (
     PROJECT_ROOT
 )
 from src.docker_utils import DockerUtils
+from src.logger import logger
 
 class WrkManager:
     """WRK benchmark manager"""
@@ -57,11 +58,11 @@ class WrkManager:
                 return path
         
         # If we get here, script not found
-        print(f"⚠️ WRK script '{script_name}' not found in {wrk_dir}")
+        logger.warning(f"WRK script '{script_name}' not found in {wrk_dir}")
         # Default to a basic script if available
         default_script = wrk_dir / "basic.lua"
         if default_script.exists():
-            print(f"Using default script: {default_script}")
+            logger.info(f"Using default script: {default_script}")
             return default_script
         else:
             raise FileNotFoundError(f"No valid WRK script found for {script_name} in {wrk_dir}")
@@ -85,10 +86,10 @@ class WrkManager:
             # Get WRK script path
             script_path = WrkManager.get_script_path(script_name, mode)
             
-            print(f"🚀 Running WRK benchmark: {url}")
-            print(f"   - Script: {script_path}")
-            print(f"   - Duration: {duration}s")
-            print(f"   - Concurrency: {concurrency}")
+            logger.start(f"Running WRK benchmark: {url}")
+            logger.info(f"   - Script: {script_path}")
+            logger.info(f"   - Duration: {duration}s")
+            logger.info(f"   - Concurrency: {concurrency}")
             
             # Use profile scripts for quick mode
             script_mode = "profile" if mode == MODE_QUICK else mode
@@ -121,16 +122,16 @@ class WrkManager:
             }
             
             # Run the container
-            print(f"🔄 Starting WRK container...")
+            logger.info("🔄 Starting WRK container...")
             container = DockerUtils.run_container(**container_config, stdout=True, stderr=True)
             
             # Print output
             output = container.decode('utf-8') if isinstance(container, bytes) else str(container)
-            print("\n=== WRK Output ===")
-            print(output)
+            logger.info("\n=== WRK Output ===")
+            logger.info(output)
             
             return True
             
         except Exception as e:
-            print(f"⚠️ WRK benchmark failed: {e}")
+            logger.warning(f"WRK benchmark failed: {e}")
             return False

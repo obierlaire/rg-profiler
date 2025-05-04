@@ -4,6 +4,7 @@ Template rendering utilities using Jinja2
 import sys
 from pathlib import Path
 import jinja2
+from src.logger import logger
 
 class TemplateManager:
     """Template rendering using Jinja2"""
@@ -29,8 +30,8 @@ class TemplateManager:
             return template.render(**context)
             
         except jinja2.exceptions.UndefinedError as e:
-            print(f"❌ Template error - missing variable: {e}")
+            logger.error(f"Template error - missing variable: {e}")
             sys.exit(1)
         except Exception as e:
-            print(f"❌ Error rendering template {template_path}: {e}")
+            logger.error(f"Error rendering template {template_path}: {e}")
             sys.exit(1)
