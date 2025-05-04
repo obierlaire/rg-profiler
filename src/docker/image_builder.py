@@ -21,6 +21,7 @@ from src.constants import (
 from src.docker_utils import DockerUtils
 from src.logger import logger
 from src.template_manager import TemplateManager
+from src.profiler import MODE_RUN_COMMANDS
 
 
 class ImageBuilder:
@@ -50,7 +51,7 @@ class ImageBuilder:
             return False
 
     @staticmethod
-    def build_framework_image(framework_dir, image_name, db_type, mode):
+    def build_framework_image(framework_dir, image_name, db_type, mode, framework_name):
         """
         Build Docker image for a framework
         
@@ -59,6 +60,7 @@ class ImageBuilder:
             image_name: Name for the built image
             db_type: Database type to use
             mode: Profiling mode
+            framework_name: Name of the framework (from CLI args)
             
         Returns:
             True if the image was built successfully
@@ -143,16 +145,11 @@ RUN chmod +x /app/codecarbon_wrapper.py"""
                 wrapper_path = Path(temp_dir) / "codecarbon_wrapper.py"
                 shutil.copy2(wrapper_template, wrapper_path)
                 os.chmod(wrapper_path, 0o755)
-
-                # Prepare RUN_COMMAND for energy mode
-                run_command = "python /app/codecarbon_wrapper.py python /app/app.py"
-            elif mode == MODE_PROFILE:
-                # For profile mode, use Scalene to profile the application
-                # Set up Scalene with parameters from profile_config.yaml (handled automatically)
-                run_command = "scalene --json --outfile=/output/scalene/scalene.json --profile-all --reduced-profile /app/app.py"
-            else:
-                # Default run command for other modes (can be expanded later)
-                run_command = "python /app/app.py"
+            
+            # Get run command from the mode mapping and format with framework name
+            run_command_template = MODE_RUN_COMMANDS.get(mode, "python /app/app.py")
+            # Format the command with the framework name if it contains a placeholder
+            run_command = run_command_template.format(framework=framework_name)
 
             # Render and copy entrypoint.sh template
             entrypoint_path = Path(temp_dir) / "entrypoint.sh"
