@@ -9,7 +9,7 @@ from src.constants import MODE_ENERGY, MODE_QUICK
 from src.docker_utils import DockerUtils
 from src.docker.container_manager import ContainerManager
 from src.wrk_manager import WrkManager
-from src.output_manager import save_report, summarize_profiling_results
+from src.output_manager import save_report, summarize_profiling_results, save_container_logs
 from src.energy_manager import EnergyManager
 
 class Profiler:
@@ -98,7 +98,7 @@ class Profiler:
         
         # Save container logs
         logs = DockerUtils.get_container_logs(container_id)
-        Profiler._save_container_logs(logs, output_dir)
+        save_container_logs(logs, output_dir)
         
         # Stop container
         DockerUtils.stop_container(container_id)
@@ -166,22 +166,10 @@ class Profiler:
         
         # Save container logs
         logs = DockerUtils.get_container_logs(container_id)
-        Profiler._save_container_logs(logs, output_dir)
+        save_container_logs(logs, output_dir)
         
         # Stop container
         DockerUtils.stop_container(container_id)
         
         return True
     
-    @staticmethod
-    def _save_container_logs(logs, output_dir):
-        """Save container logs to file"""
-        logs_path = output_dir / "container.log"
-        try:
-            with open(logs_path, 'w') as f:
-                f.write(logs)
-            print(f"✅ Container logs saved to {logs_path}")
-            return logs_path
-        except Exception as e:
-            print(f"⚠️ Error saving container logs: {e}")
-            sys.exit(1)

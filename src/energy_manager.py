@@ -14,6 +14,7 @@ from src.constants import PROJECT_ROOT
 from src.docker.container_manager import ContainerManager
 from src.docker_utils import DockerUtils
 from src.wrk_manager import WrkManager
+from src.output_manager import save_container_logs
 
 
 class EnergyManager:
@@ -87,9 +88,7 @@ class EnergyManager:
 
         # Save container logs
         logs = DockerUtils.get_container_logs(container_id)
-        logs_path = output_dir / "container.log"
-        with open(logs_path, 'w') as f:
-            f.write(logs)
+        save_container_logs(logs, output_dir)
 
         # Ensure container stops completely in energy mode
         print("🔋 Energy mode: ensuring container is fully stopped")

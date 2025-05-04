@@ -3,6 +3,7 @@ Output management for RG Profiler
 """
 import json
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -121,6 +122,8 @@ def summarize_profiling_results(output_dir, framework, language):
             "path": energy_file_path
         }
     }
+    
+    return summary
 
 
 def extract_top_consumers(scalene_data, metric_type):
@@ -186,3 +189,25 @@ def save_report(data, output_path):
     except Exception as e:
         print(f"❌ Error saving report: {e}")
         return False
+
+
+def save_container_logs(logs, output_dir):
+    """
+    Save container logs to file
+    
+    Args:
+        logs: Container log content
+        output_dir: Directory to save logs in
+        
+    Returns:
+        Path to log file or None if failed
+    """
+    logs_path = output_dir / "container.log"
+    try:
+        with open(logs_path, 'w') as f:
+            f.write(logs)
+        print(f"✅ Container logs saved to {logs_path}")
+        return logs_path
+    except Exception as e:
+        print(f"⚠️ Error saving container logs: {e}")
+        sys.exit(1)
