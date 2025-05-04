@@ -28,11 +28,8 @@ def main():
     framework_dir = get_framework_dir(args.framework, args.language)
     
     # Load configuration
-    config = ConfigManager.load_config(args.config, args.mode)
-    config["mode"] = args.mode  # Ensure mode is set
-    
-    # Apply CLI overrides
-    apply_cli_overrides(config, args)
+    config_manager = ConfigManager(args.mode, args.config)
+    config = config_manager.load_configuration(args)
     
     # Parse framework-specific configuration
     framework_config = parse_framework_config(framework_dir)
@@ -103,17 +100,6 @@ def get_framework_dir(framework, language="python"):
         logger.error(f"Framework directory not found: {framework_dir}")
         sys.exit(1)
     return framework_dir
-
-def apply_cli_overrides(config, args):
-    """Apply command line argument overrides to configuration"""
-    # Override energy mode specific settings
-    if args.mode == "energy" and "energy" in config:
-        if args.runs is not None:
-            config["energy"]["runs"] = args.runs
-        if args.sampling_frequency is not None:
-            config["energy"]["sampling_frequency"] = args.sampling_frequency
-        if args.cpu_isolation is not None:
-            config["energy"]["cpu_isolation"] = 0 if args.cpu_isolation == "on" else 1
 
 if __name__ == "__main__":
     main()

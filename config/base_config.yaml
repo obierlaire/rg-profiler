@@ -1,0 +1,58 @@
+# Base configuration for RG Profiler
+# This contains default values that apply to all modes
+
+# Profiling settings
+profiling:
+  scalene:
+    enabled: true
+    profile_all: true
+    reduced_profile: false
+    memory_sampling_rate: 100  # Memory sampling rate in Hz
+    cpu_sampling_rate: 0.01  # CPU sampling rate in seconds
+
+# WRK settings
+wrk:
+  duration: 30
+  pipeline: 1
+  max_concurrency: 16
+  levels: "16"
+  timeout: 10
+  headers:
+    Accept: application/json
+    Connection: keep-alive
+
+# Server settings
+server:
+  warmup_time: 3
+  recovery_time: 5
+  startup_timeout: 45
+  stabilization_time: 3
+  port: 8080
+  host: "0.0.0.0"
+
+# Docker settings
+docker:
+  network_name: "rg-profiler-network"
+  container_prefix: "rg-profiler"
+  stop_timeout: 10
+  health_check_timeout: 60
+  health_check_interval: 1
+
+# Database settings
+database:
+  type: "postgres"
+  ports:
+    postgres: 5432
+    mysql: 3306
+    mongodb: 27017
+
+# Retry settings
+retry:
+  max_attempts: 3
+  backoff_factor: 2
+  initial_wait: 1
+
+# HTTP settings
+http:
+  connect_timeout: 1
+  request_timeout: 2

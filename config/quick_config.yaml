@@ -1,14 +1,14 @@
-# Ultra-quick test configuration for rapid validation
+# Quick test configuration for rapid validation
 mode: quick
 
-# Test definitions - only test JSON endpoint
+# Test definitions
 tests:
   - name: json
     endpoint: /json
     script: json.lua
     description: "JSON serialization test for quick validation"
 
-# Enable minimal profiling for quick mode
+# Profiling settings
 profiling:
   scalene:
     enabled: true
@@ -17,9 +17,14 @@ profiling:
     memory_sampling_rate: 100  # Memory sampling rate in Hz
     cpu_sampling_rate: 0.01  # CPU sampling rate in seconds
 
+# Endpoints configuration
+endpoints:
+  include_all: false
+  include: ["json"]
+
 # Minimal WRK settings
 wrk:
-  # Very short duration (just 1 second)
+  # Very short duration
   duration: 1
   # No pipelining
   pipeline: 1
@@ -44,3 +49,16 @@ server:
   startup_timeout: 10
   # Minimal stabilization
   stabilization_time: 0.5
+
+# Quick test variants
+quick_variants:
+  # Variant with no profiling for fastest testing
+  test_only:
+    profiling:
+      scalene:
+        enabled: false
+    server:
+      startup_timeout: 20
+      stabilization_time: 1
+    wrk:
+      duration: 2

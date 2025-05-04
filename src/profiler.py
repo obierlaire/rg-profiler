@@ -21,9 +21,17 @@ class Profiler:
         print(f"🚀 Starting profiling in {mode} mode...")
         
         # Get tests from config
-        from src.config_manager import ConfigManager
-        tests = ConfigManager.get_tests_for_mode(config)
+        tests = config.get("tests", [])
         
+        # If tests are not directly in the config, filter them based on endpoints
+        if not tests and "endpoints" in config:
+            endpoints_config = config["endpoints"]
+            # Implement endpoint filtering logic if needed
+        
+        if not tests:
+            print("❌ No tests defined in configuration")
+            sys.exit(1)
+            
         # Run appropriate test mode
         if mode == MODE_ENERGY:
             success = Profiler._run_energy_tests(container_id, framework_config, config, output_dir, tests)
