@@ -15,6 +15,7 @@ project_root = Path(__file__).parent.resolve()
 sys.path.append(str(project_root))
 
 from src.constants import FRAMEWORKS_ROOT
+from src.logger import logger
 from src.visualization.energy_viz import generate_energy_report
 
 
@@ -104,14 +105,14 @@ def run_energy_test(framework, language="python", runs=3, sampling_frequency=0.5
     Returns:
         Boolean indicating success
     """
-    print(f"\n{'='*80}")
-    print(f"  TESTING FRAMEWORK: {language}/{framework}")
-    print(f"{'='*80}\n")
+    logger.info(f"\n{'='*80}")
+    logger.info(f"  TESTING FRAMEWORK: {language}/{framework}")
+    logger.info(f"{'='*80}\n")
     
     # Validate framework directory exists
     framework_dir = FRAMEWORKS_ROOT / language / framework
     if not framework_dir.exists():
-        print(f"❌ Framework directory not found: {framework_dir}")
+        logger.error(f"Framework directory not found: {framework_dir}")
         return False
     
     # Build command
@@ -131,12 +132,12 @@ def run_energy_test(framework, language="python", runs=3, sampling_frequency=0.5
         cmd.append("--skip-db")
     
     # Run the command
-    print(f"🚀 Running command: {' '.join(cmd)}")
+    logger.start(f"Running command: {' '.join(cmd)}")
     try:
         result = subprocess.run(cmd, check=True)
         return result.returncode == 0
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error running energy test for {framework}: {e}")
+        logger.error(f"Error running energy test for {framework}: {e}")
         return False
 
 
@@ -146,11 +147,11 @@ def main():
     
     start_time = time.time()
     
-    print(f"🔋 RG Profiler Energy Test Suite")
-    print(f"   Language: {args.language}")
-    print(f"   Frameworks: {', '.join(args.frameworks)}")
-    print(f"   Runs per framework: {args.runs}")
-    print(f"   CPU Isolation: {args.cpu_isolation}")
+    logger.info(f"🔋 RG Profiler Energy Test Suite")
+    logger.info(f"   Language: {args.language}")
+    logger.info(f"   Frameworks: {', '.join(args.frameworks)}")
+    logger.info(f"   Runs per framework: {args.runs}")
+    logger.info(f"   CPU Isolation: {args.cpu_isolation}")
     
     if not args.skip_tests:
         # Run energy tests for each framework
@@ -168,14 +169,14 @@ def main():
             results[framework] = "✅ Success" if success else "❌ Failed"
         
         # Print summary
-        print("\n📋 Energy Test Results Summary:")
+        logger.info("\n📋 Energy Test Results Summary:")
         for framework, result in results.items():
-            print(f"   - {framework}: {result}")
+            logger.info(f"   - {framework}: {result}")
     else:
-        print("⏩ Skipping tests as requested")
+        logger.info("⏩ Skipping tests as requested")
     
     # Generate energy report
-    print("\n📊 Generating energy comparison report...")
+    logger.info("\n📊 Generating energy comparison report...")
     report_dir = generate_energy_report(
         "results",
         output_dir=args.output_dir,
@@ -184,8 +185,8 @@ def main():
     
     # Print completion
     duration = time.time() - start_time
-    print(f"\n✅ Energy test suite completed in {duration:.1f} seconds")
-    print(f"📄 Energy report available at: {report_dir}/energy_report.html")
+    logger.success(f"Energy test suite completed in {duration:.1f} seconds")
+    logger.info(f"📄 Energy report available at: {report_dir}/energy_report.html")
 
 
 if __name__ == "__main__":

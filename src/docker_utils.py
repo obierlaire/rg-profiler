@@ -6,6 +6,7 @@ communication with the Docker daemon and provides basic operations without highe
 container lifecycle management or specialized operations.
 """
 import docker
+from src.logger import logger
 
 class DockerUtils:
     """
@@ -25,7 +26,7 @@ class DockerUtils:
             try:
                 cls._client = docker.from_env()
             except Exception as e:
-                print(f"❌ Failed to connect to Docker: {e}")
+                logger.error(f"Failed to connect to Docker: {e}")
                 raise
         return cls._client
     

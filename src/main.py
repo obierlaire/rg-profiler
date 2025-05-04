@@ -10,6 +10,7 @@ from src.constants import PROJECT_ROOT, FRAMEWORKS_ROOT, CONTAINER_NAME_PREFIX
 from src.database_manager import DatabaseManager
 from src.docker.image_builder import ImageBuilder
 from src.docker.container_manager import ContainerManager
+from src.logger import logger, setup_logging
 from src.output_manager import setup_output_directory
 from src.parsers.framework_parser import parse_framework_config
 from src.profiler import Profiler
@@ -44,7 +45,7 @@ def main():
         db_type = framework_config["database"]["type"]
         DatabaseManager.start_database(db_type)
     else:
-        print("⏩ Skipping database startup")
+        logger.info("⏩ Skipping database startup")
     
     # Build framework Docker image
     image_name = f"rg-profiler-{args.language}-{args.framework}"
@@ -85,12 +86,12 @@ def check_required_images():
             missing_images.append(image)
     
     if missing_images:
-        print("❌ Required Docker images are missing:")
+        logger.error("Required Docker images are missing:")
         for image in missing_images:
-            print(f"  - {image}")
-        print("\nPlease run the following commands to build the required images:")
-        print("  make all              # Build all required images")
-        print("  make start-databases  # Start database containers")
+            logger.error(f"  - {image}")
+        logger.error("\nPlease run the following commands to build the required images:")
+        logger.error("  make all              # Build all required images")
+        logger.error("  make start-databases  # Start database containers")
         sys.exit(1)
     
     return True
@@ -99,7 +100,7 @@ def get_framework_dir(framework, language="python"):
     """Get the framework directory and validate it exists"""
     framework_dir = FRAMEWORKS_ROOT / language / framework
     if not framework_dir.exists():
-        print(f"❌ Framework directory not found: {framework_dir}")
+        logger.error(f"Framework directory not found: {framework_dir}")
         sys.exit(1)
     return framework_dir
 

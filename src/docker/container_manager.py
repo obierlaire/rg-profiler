@@ -12,6 +12,7 @@ import docker
 from src.constants import DEFAULT_SERVER_PORT, DEFAULT_STARTUP_TIMEOUT, DOCKER_NETWORK_NAME
 from src.docker_utils import DockerUtils
 from src.docker.container_operations import ContainerOperations
+from src.logger import logger
 
 
 class ContainerManager:
@@ -52,13 +53,13 @@ class ContainerManager:
 
         # Ensure database type is specified
         if "database" not in framework_config or "type" not in framework_config["database"]:
-            print(f"❌ Database type not specified in framework configuration")
+            logger.error(f"Database type not specified in framework configuration")
             sys.exit(1)
 
         # Prepare environment variables
         environment = ContainerManager._prepare_environment(framework_config, mode, env_vars)
 
-        print(f"⚙️ Container configured: {container_name}")
+        logger.info(f"⚙️ Container configured: {container_name}")
         return container_name, volumes, environment
 
     @staticmethod
@@ -125,9 +126,9 @@ class ContainerManager:
         networks = DockerUtils.list_networks(names=[DOCKER_NETWORK_NAME])
         if not networks:
             DockerUtils.create_network(DOCKER_NETWORK_NAME)
-            print(f"✅ Created Docker network: {DOCKER_NETWORK_NAME}")
+            logger.success(f"Created Docker network: {DOCKER_NETWORK_NAME}")
         else:
-            print(f"✅ Using existing network: {DOCKER_NETWORK_NAME}")
+            logger.success(f"Using existing network: {DOCKER_NETWORK_NAME}")
         
         # Configure container
         container_name, volumes, environment = ContainerManager.create_container(
@@ -136,7 +137,7 @@ class ContainerManager:
 
         try:
             # Run the container
-            print(f"🚀 Starting container: {container_name}")
+            logger.start(f"Starting container: {container_name}")
             container = DockerUtils.run_container(
                 image_name,
                 name=container_name,
@@ -146,18 +147,18 @@ class ContainerManager:
                 environment=environment
             )
 
-            print(f"✅ Started container {container_name} with ID: {container.id[:12]}")
+            logger.success(f"Started container {container_name} with ID: {container.id[:12]}")
 
             # Wait for container to be ready
             if ContainerManager.wait_for_container_ready(container.id, framework_config):
                 return container.id
             else:
                 ContainerManager.stop_container(container.id)
-                print("❌ Container failed to become ready")
+                logger.error(f"Container failed to become ready")
                 sys.exit(1)
 
         except Exception as e:
-            print(f"❌ Failed to start container: {e}")
+            logger.error(f"Failed to start container: {e}")
             sys.exit(1)
 
     @staticmethod
@@ -173,16 +174,16 @@ class ContainerManager:
         """
         try:
             container = DockerUtils.get_container(container_name)
-            print(f"🛑 Stopping existing container: {container_name}")
+            logger.info(f"🛑 Stopping existing container: {container_name}")
             container.stop(timeout=5)
-            print(f"🗑️ Removing container: {container_name}")
+            logger.info(f"🗑️ Removing container: {container_name}")
             container.remove()
-            print(f"✅ Removed existing container: {container_name}")
+            logger.success(f"Removed existing container: {container_name}")
             return True
         except docker.errors.NotFound:
             return False
         except Exception as e:
-            print(f"❌ Error removing existing container: {e}")
+            logger.error(f"Error removing existing container: {e}")
             sys.exit(1)
 
     @staticmethod
@@ -201,16 +202,16 @@ class ContainerManager:
         """
         try:
             container = DockerUtils.get_container(container_id_or_name)
-            print(f"🛑 Stopping container: {container.name}")
+            logger.info(f"🛑 Stopping container: {container.name}")
             container.stop(timeout=10)
-            print(f"🗑️ Removing container: {container.name}")
+            logger.info(f"🗑️ Removing container: {container.name}")
             container.remove()
             return True
         except docker.errors.NotFound:
-            print(f"Container {container_id_or_name} not found (already removed)")
+            logger.info(f"Container {container_id_or_name} not found (already removed)")
             return True
         except Exception as e:
-            print(f"❌ Error stopping container: {e}")
+            logger.error(f"Error stopping container: {e}")
             sys.exit(1)
 
     @staticmethod
@@ -228,7 +229,7 @@ class ContainerManager:
         """
         server_port = framework_config.get("server", {}).get("port", DEFAULT_SERVER_PORT)
         
-        print(f"⏳ Waiting for framework server to be ready...")
+        logger.info(f"⏳ Waiting for framework server to be ready...")
         
         # Give the container a few seconds to start
         time.sleep(3)
@@ -239,23 +240,23 @@ class ContainerManager:
             try:
                 container = DockerUtils.get_container(container_id)
                 if container.status != "running":
-                    print(f"❌ Container stopped with status: {container.status}")
+                    logger.error(f"Container stopped with status: {container.status}")
                     return False
                 
                 # Check if server is responding
                 if ContainerOperations.check_server_health(container_id, server_port):
-                    print(f"✅ Server is ready")
+                    logger.success(f"Server is ready")
                     return True
                 
                 # Wait before trying again
-                print(f"⏳ Waiting for server... ({int(time.time() - start_time)}/{timeout}s)")
+                logger.info(f"⏳ Waiting for server... ({int(time.time() - start_time)}/{timeout}s)")
                 time.sleep(2)
                 
             except Exception as e:
-                print(f"⚠️ Error checking readiness: {e}")
+                logger.warning(f"Error checking readiness: {e}")
                 time.sleep(2)
         
-        print("❌ Timeout waiting for server to become ready")
+        logger.error("Timeout waiting for server to become ready")
         return False
 
     @staticmethod
@@ -275,7 +276,7 @@ class ContainerManager:
         """
         # Ensure server port is specified
         if "server" not in framework_config or "port" not in framework_config["server"]:
-            print(f"❌ Server port not specified in framework configuration")
+            logger.error(f"Server port not specified in framework configuration")
             sys.exit(1)
             
         server_port = framework_config["server"]["port"]
@@ -289,20 +290,20 @@ class ContainerManager:
                 try:
                     container = DockerUtils.get_container(container_id)
                     if container.status != "running":
-                        print("✅ Server shutdown gracefully")
+                        logger.success("Server shutdown gracefully")
                         return True
                 except docker.errors.NotFound:
-                    print("✅ Container no longer exists")
+                    logger.success("Container no longer exists")
                     return True
 
-                print(f"⏳ Waiting for graceful shutdown... ({i+1}/10)")
+                logger.info(f"⏳ Waiting for graceful shutdown... ({i+1}/10)")
                 time.sleep(1)
 
-            print("⚠️ Container didn't shutdown gracefully, forcing stop")
+            logger.warning("Container didn't shutdown gracefully, forcing stop")
             ContainerManager.stop_container(container_id)
             return False
 
         except Exception as e:
-            print(f"❌ Error during graceful shutdown: {e}")
+            logger.error(f"Error during graceful shutdown: {e}")
             ContainerManager.stop_container(container_id)
             sys.exit(1)

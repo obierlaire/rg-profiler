@@ -13,6 +13,7 @@ import numpy as np
 from src.constants import PROJECT_ROOT
 from src.docker.container_manager import ContainerManager
 from src.docker.container_operations import ContainerOperations
+from src.logger import logger
 from src.wrk_manager import WrkManager
 
 
@@ -35,13 +36,13 @@ class EnergyManager:
         server_port = framework_config.get("server", {}).get("port", 8080)
         base_url = f"http://{container_name}:{server_port}"
 
-        print(f"🔋 Running {runs} energy measurement run(s)")
+        logger.info(f"🔋 Running {runs} energy measurement run(s)")
 
         for run_num in range(1, runs + 1):
             run_dir = output_dir / "runs" / f"run_{run_num}"
             run_dir.mkdir(exist_ok=True)
 
-            print(f"\n🔄 Starting energy run {run_num}/{runs}")
+            logger.info(f"\n🔄 Starting energy run {run_num}/{runs}")
 
             # Run tests for this energy run
             for test in tests:
@@ -49,7 +50,7 @@ class EnergyManager:
                 test_url = f"{base_url}{endpoint}"
                 script = test.get("script", f"{test['name']}.lua")
 
-                print(
+                logger.info(
                     f"📊 Testing: {test['name']} - {test.get('description', 'No description')}")
 
                 # Start energy tracking before the test
@@ -67,7 +68,7 @@ class EnergyManager:
                 EnergyManager._stop_tracking(container_id)
 
                 if not success:
-                    print(f"⚠️ Test failed for {test['name']}")
+                    logger.warning(f"Test failed for {test['name']}")
 
                 # Recovery time between tests
                 time.sleep(config["server"]["recovery_time"])
@@ -77,7 +78,7 @@ class EnergyManager:
 
             # Interval between runs
             if run_num < runs:
-                print(f"⏳ Waiting {run_interval} seconds before next run...")
+                logger.info(f"⏳ Waiting {run_interval} seconds before next run...")
                 time.sleep(run_interval)
 
         # Cleanup container
@@ -85,7 +86,7 @@ class EnergyManager:
         ContainerOperations.save_container_logs(container_id, output_dir)
         
         # Ensure container stops completely in energy mode
-        print("🔋 Energy mode: ensuring container is fully stopped")
+        logger.info("🔋 Energy mode: ensuring container is fully stopped")
         ContainerManager.stop_container(container_id)
 
         # Process all runs
@@ -96,13 +97,13 @@ class EnergyManager:
     @staticmethod
     def _start_tracking(container_id):
         """Start energy tracking in the container"""
-        print("▶️ Energy tracking is handled by codecarbon_wrapper.py")
+        logger.info("▶️ Energy tracking is handled by codecarbon_wrapper.py")
         return True
 
     @staticmethod
     def _stop_tracking(container_id):
         """Stop energy tracking in the container"""
-        print("⏹️ Energy tracking is handled by codecarbon_wrapper.py")
+        logger.info("⏹️ Energy tracking is handled by codecarbon_wrapper.py")
         return True
 
     @staticmethod
@@ -116,14 +117,14 @@ class EnergyManager:
             )
 
             # Shutdown the server with explicit request to /shutdown endpoint
-            print("🔍 Shutting down server to save energy data...")
+            logger.info("🔍 Shutting down server to save energy data...")
             server_port = 8080  # Default server port
 
             # Send shutdown signal to server
             ContainerOperations.send_server_shutdown(container_id, server_port)
 
             # Wait for emissions file to be created (with timeout)
-            print("⏳ Waiting for CodeCarbon to save emissions data...")
+            logger.info("⏳ Waiting for CodeCarbon to save emissions data...")
             max_wait_time = 30  # seconds
             emissions_file = "/output/energy/emissions.csv"
 
@@ -146,8 +147,8 @@ class EnergyManager:
 
                         # If file has some reasonable size, assume it's valid
                         if int(file_size) > 100:  # More than 100 bytes
-                            print(
-                                f"✅ Emissions file found with size: {file_size} bytes")
+                            logger.success(
+                                f"Emissions file found with size: {file_size} bytes")
                             break
 
                     # Show directory content occasionally for debugging
@@ -156,11 +157,11 @@ class EnergyManager:
                             container_id,
                             ["ls", "-la", "/output/energy"]
                         )
-                        print(f"📁 Energy directory contents:\n{dir_content}")
+                        logger.info(f"📁 Energy directory contents:\n{dir_content}")
 
                     time.sleep(1)
                 except Exception as e:
-                    print(f"⚠️ Error checking for emissions file: {e}")
+                    logger.warning(f"Error checking for emissions file: {e}")
                     time.sleep(1)
 
             # Copy emissions data from container to run directory
@@ -176,14 +177,14 @@ class EnergyManager:
 
                 # Just header or empty
                 if not emissions_content or emissions_content.count('\n') <= 1:
-                    print(f"❌ No emissions data found in container")
+                    logger.error(f"No emissions data found in container")
                     return False
 
                 # Save emissions data
                 with open(emissions_path, 'w') as f:
                     f.write(emissions_content)
 
-                print(f"✅ Saved emissions data for run {run_num}")
+                logger.success(f"Saved emissions data for run {run_num}")
 
                 # Process energy data for this run
                 energy_data = EnergyManager.parse_codecarbon_output(
@@ -198,15 +199,15 @@ class EnergyManager:
                 with open(energy_path, 'w') as f:
                     json.dump(energy_report, f, indent=2)
 
-                print(f"✅ Processed energy data for run {run_num}")
+                logger.success(f"Processed energy data for run {run_num}")
                 return True
 
             except Exception as e:
-                print(f"❌ Error saving emissions data: {e}")
+                logger.error(f"Error saving emissions data: {e}")
                 return False
 
         except Exception as e:
-            print(f"❌ Error in energy run data processing: {e}")
+            logger.error(f"Error in energy run data processing: {e}")
             return False
 
     @staticmethod
@@ -217,28 +218,28 @@ class EnergyManager:
 
             # Check if file exists
             if not os.path.exists(csv_path):
-                print(f"❌ Emissions file does not exist: {csv_path}")
-                print("❌ CodeCarbon failed to generate emissions data")
+                logger.error(f"Emissions file does not exist: {csv_path}")
+                logger.error("CodeCarbon failed to generate emissions data")
                 sys.exit(1)
 
             # Check if file is empty
             if os.path.getsize(csv_path) == 0:
-                print(f"❌ Emissions file is empty: {csv_path}")
-                print("❌ CodeCarbon failed to write any data to emissions file")
+                logger.error(f"Emissions file is empty: {csv_path}")
+                logger.error("CodeCarbon failed to write any data to emissions file")
                 sys.exit(1)
 
             # Try to read the CSV file
             try:
                 df = pd.read_csv(csv_path)
             except pd.errors.EmptyDataError:
-                print(f"❌ No data in emissions file: {csv_path}")
-                print("❌ CodeCarbon failed to write valid CSV data")
+                logger.error(f"No data in emissions file: {csv_path}")
+                logger.error("CodeCarbon failed to write valid CSV data")
                 sys.exit(1)
 
             # Check if there's any data beyond the header
             if len(df) == 0:
-                print(f"❌ No energy measurements in file: {csv_path}")
-                print("❌ CodeCarbon only wrote header row without measurements")
+                logger.error(f"No energy measurements in file: {csv_path}")
+                logger.error("CodeCarbon only wrote header row without measurements")
                 sys.exit(1)
 
             # Get the last (most recent) entry
@@ -247,10 +248,10 @@ class EnergyManager:
             # Get additional info from the file
             with open(csv_path, 'r') as f:
                 lines = f.readlines()
-                print(
+                logger.info(
                     f"ℹ️ Found {len(lines)-1} energy measurements in emissions file")
                 if len(lines) > 1:
-                    print(f"ℹ️ Last measurement: {lines[-1][:100]}")
+                    logger.info(f"ℹ️ Last measurement: {lines[-1][:100]}")
 
             # Convert to dictionary with normalized keys
             return {
@@ -274,7 +275,7 @@ class EnergyManager:
             }
 
         except Exception as e:
-            print(f"❌ Error processing CodeCarbon output: {e}")
+            logger.error(f"Error processing CodeCarbon output: {e}")
             sys.exit(1)
 
     @staticmethod
@@ -323,10 +324,11 @@ class EnergyManager:
         """Combine and analyze multiple energy measurement runs"""
         runs_dir = output_dir / "runs"
         if not runs_dir.exists():
-            print(f"❌ Runs directory not found: {runs_dir}")
+            logger.error(f"Runs directory not found: {runs_dir}")
             sys.exit(1)
 
         run_data = []
+        individual_runs = []
 
         # Collect data from each run
         for i in range(1, num_runs + 1):
@@ -334,19 +336,24 @@ class EnergyManager:
             energy_file = run_dir / "energy.json"
 
             if not energy_file.exists():
-                print(f"❌ Energy file not found for run {i}: {energy_file}")
+                logger.error(f"Energy file not found for run {i}: {energy_file}")
                 sys.exit(1)
 
             try:
                 with open(energy_file, 'r') as f:
                     data = json.load(f)
                     run_data.append(data)
+                    
+                    # Store individual run data with run number
+                    run_info = data.copy()
+                    run_info["run_number"] = i
+                    individual_runs.append(run_info)
             except Exception as e:
-                print(f"❌ Error reading energy file for run {i}: {e}")
+                logger.error(f"Error reading energy file for run {i}: {e}")
                 sys.exit(1)
 
         if not run_data:
-            print("❌ No valid run data found")
+            logger.error("No valid run data found")
             sys.exit(1)
 
         # Calculate statistics
@@ -362,6 +369,7 @@ class EnergyManager:
             "framework": run_data[0]["framework"],
             "language": run_data[0]["language"],
             "timestamp": run_data[0]["timestamp"],
+            "individual_runs": individual_runs,
             "statistics": {
                 "energy_wh": {
                     "values": energy_values,
@@ -369,7 +377,8 @@ class EnergyManager:
                     "median": float(np.median(energy_values)),
                     "stddev": float(np.std(energy_values)),
                     "min": float(np.min(energy_values)),
-                    "max": float(np.max(energy_values))
+                    "max": float(np.max(energy_values)),
+                    "coefficient_of_variation": float(np.std(energy_values) / np.mean(energy_values) * 100)
                 },
                 "cpu_energy_wh": {
                     "values": cpu_energy_values,
@@ -377,7 +386,8 @@ class EnergyManager:
                     "median": float(np.median(cpu_energy_values)),
                     "stddev": float(np.std(cpu_energy_values)),
                     "min": float(np.min(cpu_energy_values)),
-                    "max": float(np.max(cpu_energy_values))
+                    "max": float(np.max(cpu_energy_values)),
+                    "coefficient_of_variation": float(np.std(cpu_energy_values) / np.mean(cpu_energy_values) * 100)
                 },
                 "ram_energy_wh": {
                     "values": ram_energy_values,
@@ -385,7 +395,8 @@ class EnergyManager:
                     "median": float(np.median(ram_energy_values)),
                     "stddev": float(np.std(ram_energy_values)),
                     "min": float(np.min(ram_energy_values)),
-                    "max": float(np.max(ram_energy_values))
+                    "max": float(np.max(ram_energy_values)),
+                    "coefficient_of_variation": float(np.std(ram_energy_values) / np.mean(ram_energy_values) * 100)
                 },
                 "emissions_mgCO2e": {
                     "values": emissions_values,
@@ -393,7 +404,8 @@ class EnergyManager:
                     "median": float(np.median(emissions_values)),
                     "stddev": float(np.std(emissions_values)),
                     "min": float(np.min(emissions_values)),
-                    "max": float(np.max(emissions_values))
+                    "max": float(np.max(emissions_values)),
+                    "coefficient_of_variation": float(np.std(emissions_values) / np.mean(emissions_values) * 100)
                 },
                 "duration_s": {
                     "values": duration_values,
@@ -401,7 +413,8 @@ class EnergyManager:
                     "median": float(np.median(duration_values)),
                     "stddev": float(np.std(duration_values)),
                     "min": float(np.min(duration_values)),
-                    "max": float(np.max(duration_values))
+                    "max": float(np.max(duration_values)),
+                    "coefficient_of_variation": float(np.std(duration_values) / np.mean(duration_values) * 100)
                 }
             }
         }
@@ -411,16 +424,16 @@ class EnergyManager:
         with open(stats_file, 'w') as f:
             json.dump(stats, f, indent=2)
 
-        print(f"✅ Combined energy statistics saved to {stats_file}")
+        logger.success(f"Combined energy statistics saved to {stats_file}")
 
         # Print summary
-        print("\n🔋 Energy Statistics Summary:")
-        print(f"   - Runs: {stats['runs']}")
-        print(
+        logger.info("\n🔋 Energy Statistics Summary:")
+        logger.info(f"   - Runs: {stats['runs']}")
+        logger.info(
             f"   - Mean energy: {stats['statistics']['energy_wh']['mean']:.6f} Wh (±{stats['statistics']['energy_wh']['stddev']:.6f} Wh)")
-        print(
+        logger.info(
             f"   - Mean CO2: {stats['statistics']['emissions_mgCO2e']['mean']:.2f} mgCO2e (±{stats['statistics']['emissions_mgCO2e']['stddev']:.2f} mgCO2e)")
-        print(
+        logger.info(
             f"   - Mean duration: {stats['statistics']['duration_s']['mean']:.2f}s (±{stats['statistics']['duration_s']['stddev']:.2f}s)")
 
         return stats
@@ -434,7 +447,7 @@ class EnergyManager:
         emissions_csv = energy_dir / "emissions.csv"
 
         if not emissions_csv.exists():
-            print(f"❌ CodeCarbon output not found: {emissions_csv}")
+            logger.error(f"CodeCarbon output not found: {emissions_csv}")
             sys.exit(1)
 
         # Parse CodeCarbon output
@@ -450,16 +463,16 @@ class EnergyManager:
             json.dump(energy_report, f, indent=2)
 
         # Print summary
-        print("\n🔋 Energy Consumption Summary:")
-        print(
+        logger.info("\n🔋 Energy Consumption Summary:")
+        logger.info(
             f"   - Total energy: {energy_report['energy']['total_watt_hours']:.6f} Wh")
-        print(
+        logger.info(
             f"   - CPU energy: {energy_report['energy']['cpu_watt_hours']:.6f} Wh")
-        print(
+        logger.info(
             f"   - RAM energy: {energy_report['energy']['ram_watt_hours']:.6f} Wh")
-        print(
+        logger.info(
             f"   - CO2 emissions: {energy_report['emissions']['mg_carbon']:.2f} mgCO2e")
-        print(
+        logger.info(
             f"   - Duration: {energy_report['duration_seconds']:.2f} seconds")
 
         return True

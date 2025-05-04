@@ -19,6 +19,7 @@ from src.constants import (
     PROJECT_ROOT,
 )
 from src.docker_utils import DockerUtils
+from src.logger import logger
 from src.template_manager import TemplateManager
 
 
@@ -70,42 +71,42 @@ class ImageBuilder:
         db_image = f"{CONTAINER_NAME_PREFIX}-{db_type}"
 
         if not ImageBuilder.check_image_exists(base_image):
-            print(f"❌ Required base image not found: {base_image}")
-            print(f"Please run 'make python-base' to build the Python base image")
+            logger.error(f"Required base image not found: {base_image}")
+            logger.error(f"Please run 'make python-base' to build the Python base image")
             sys.exit(1)
 
         if not ImageBuilder.check_image_exists(db_image):
-            print(f"❌ Required database image not found: {db_image}")
-            print(f"Please run 'make {db_type}' to build the database image")
+            logger.error(f"Required database image not found: {db_image}")
+            logger.error(f"Please run 'make {db_type}' to build the database image")
             sys.exit(1)
 
-        print(f"🔨 Building Docker image for framework: {framework_dir.name}")
+        logger.info(f"🔨 Building Docker image for framework: {framework_dir.name}")
 
         # Check templates exist
         dockerfile_template = PROJECT_ROOT / "templates" / "Dockerfile.template"
 
         if not dockerfile_template.exists():
-            print(f"❌ Dockerfile template not found: {dockerfile_template}")
+            logger.error(f"Dockerfile template not found: {dockerfile_template}")
             sys.exit(1)
 
         # Check additional templates for energy mode
         if mode == MODE_ENERGY:
             wrapper_template = PROJECT_ROOT / "templates" / "codecarbon_wrapper.py.template"
             if not wrapper_template.exists():
-                print(
-                    f"❌ CodeCarbon wrapper template not found: {wrapper_template}")
+                logger.error(
+                    f"CodeCarbon wrapper template not found: {wrapper_template}")
                 sys.exit(1)
 
         # Check entrypoint script template
         entrypoint_template = PROJECT_ROOT / "templates" / "entrypoint.sh.template"
         if not entrypoint_template.exists():
-            print(
-                f"❌ Entrypoint script template not found: {entrypoint_template}")
+            logger.error(
+                f"Entrypoint script template not found: {entrypoint_template}")
             sys.exit(1)
 
         # Verify database port exists
         if db_type not in DATABASE_PORTS:
-            print(f"❌ Unknown database type: {db_type}")
+            logger.error(f"Unknown database type: {db_type}")
             sys.exit(1)
 
         db_port = DATABASE_PORTS[db_type]
@@ -175,7 +176,7 @@ RUN chmod +x /app/codecarbon_wrapper.py"""
 
             # Build the image
             try:
-                print(f"🔨 Building image: {image_name}")
+                logger.info(f"🔨 Building image: {image_name}")
 
                 # Use docker-py's API to build the image
                 image, logs = DockerUtils.build_image(
@@ -185,9 +186,9 @@ RUN chmod +x /app/codecarbon_wrapper.py"""
                     rm=True
                 )
 
-                print(f"✅ Successfully built image: {image_name}")
+                logger.success(f"Successfully built image: {image_name}")
                 return True
 
             except Exception as e:
-                print(f"❌ Failed to build Docker image: {e}")
+                logger.error(f"Failed to build Docker image: {e}")
                 sys.exit(1)
