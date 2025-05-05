@@ -8,47 +8,47 @@ tests:
     script: json.lua
     description: "JSON serialization test"
     
-  # - name: plaintext
-  #   endpoint: /plaintext
-  #   script: basic.lua
-  #   description: "Plaintext response test"
+  - name: plaintext
+    endpoint: /plaintext
+    script: basic.lua
+    description: "Plaintext response test"
     
-  # - name: db
-  #   endpoint: /db
-  #   script: db.lua
-  #   description: "Database query test"
+  - name: db
+    endpoint: /db
+    script: db.lua
+    description: "Database query test"
     
-  # - name: queries
-  #   endpoint: /queries
-  #   script: queries.lua
-  #   description: "Multiple database queries test"
-  #   parameters:
-  #     count: 20
+  - name: queries
+    endpoint: /queries
+    script: queries.lua
+    description: "Multiple database queries test"
+    parameters:
+      count: 20
     
-  # - name: complex_routing
-  #   endpoint: /complex-routing/1/test/param1/param2
-  #   script: routing.lua
-  #   description: "Complex route handling test"
+  - name: complex_routing
+    endpoint: /complex-routing/1/test/param1/param2
+    script: routing.lua
+    description: "Complex route handling test"
     
-  # - name: template_simple
-  #   endpoint: /template-simple
-  #   script: template_simple.lua
-  #   description: "Simple template rendering test"
+  - name: template_simple
+    endpoint: /template-simple
+    script: template_simple.lua
+    description: "Simple template rendering test"
     
-  # - name: template_complex
-  #   endpoint: /template-complex
-  #   script: template_complex.lua
-  #   description: "Complex template rendering test"
+  - name: template_complex
+    endpoint: /template-complex
+    script: template_complex.lua
+    description: "Complex template rendering test"
     
-  # - name: cpu_intensive
-  #   endpoint: /cpu-intensive
-  #   script: cpu.lua
-  #   description: "CPU-intensive computation test"
+  - name: cpu_intensive
+    endpoint: /cpu-intensive
+    script: cpu.lua
+    description: "CPU-intensive computation test"
     
-  # - name: memory_heavy
-  #   endpoint: /memory-heavy
-  #   script: memory.lua
-  #   description: "Memory-intensive operation test"
+  - name: memory_heavy
+    endpoint: /memory-heavy
+    script: memory.lua
+    description: "Memory-intensive operation test"
 
 # Profiling settings
 profiling:
