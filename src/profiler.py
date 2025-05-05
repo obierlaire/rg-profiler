@@ -13,7 +13,7 @@ from src.logger import logger
 from src.output_manager import save_report, summarize_profiling_results
 from src.wrk_manager import WrkManager
 
-# Mapping of modes to their corresponding run commands (with placeholders for framework)
+# Base run commands for different modes
 MODE_RUN_COMMANDS = {
     MODE_PROFILE: "scalene --json --outfile=/output/scalene/scalene.json  --profile-all --profile-only {framework} --reduced-profile /app/app.py",
     MODE_ENERGY: "python /app/codecarbon_wrapper.py python /app/app.py",
@@ -131,7 +131,7 @@ class Profiler:
         ContainerOperations.save_container_logs(container_id, output_dir)
 
         # Stop container
-        ContainerManager.stop_container(container_id)
+        ContainerManager.stop_container(container_id, framework_config)
 
         return True
 
@@ -178,7 +178,8 @@ class Profiler:
                 script,
                 config["wrk"]["duration"],
                 config["wrk"]["max_concurrency"],
-                mode
+                mode,
+                config
             )
 
             # For quick mode, we exit immediately on failure, for other modes we just log a warning

@@ -81,6 +81,7 @@ def start_tracking():
     save_interval = int(os.environ.get("CODECARBON_SAVE_INTERVAL", "15"))
     measure_power_secs = float(os.environ.get(
         "CODECARBON_MEASURE_POWER_SECS", "0.5"))
+    tracking_mode = os.environ.get("CODECARBON_TRACKING_MODE", "process")
 
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -91,14 +92,15 @@ def start_tracking():
     print(f"   - Output file: {output_file}")
     print(f"   - Save interval: {save_interval} seconds")
     print(f"   - Measure power interval: {measure_power_secs} seconds")
-
+    print(f"   - Tracking mode: {tracking_mode}")
+    
     tracker = EmissionsTracker(
         output_dir=output_dir,
         output_file=output_file,
         save_to_file=True,
         save_to_api=False,
         log_level="info",
-        tracking_mode="process",
+        tracking_mode=tracking_mode,
         measure_power_secs=measure_power_secs,
     )
 

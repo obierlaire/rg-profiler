@@ -6,13 +6,73 @@ copying files, retrieving logs, and health checking containers.
 """
 import sys
 import logging
+import time
 from pathlib import Path
+from functools import wraps
 
 import docker
 from src.constants import DEFAULT_SERVER_PORT
 from src.docker_utils import DockerUtils
 from src.output_manager import save_container_logs
 from src.logger import logger
+
+def with_retry(operation_name=None):
+    """
+    Decorator for retrying operations with backoff
+    
+    Args:
+        operation_name: Optional name of the operation for logging
+        
+    Returns:
+        Decorator function
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Get configuration from kwargs
+            config = kwargs.get('config', {})
+            
+            # Extract retry settings from config
+            max_attempts = 3  # Default max attempts
+            backoff_factor = 2  # Default backoff factor
+            initial_wait = 1  # Default initial wait
+            
+            if config and "retry" in config:
+                retry_config = config["retry"]
+                if "max_attempts" in retry_config:
+                    max_attempts = retry_config["max_attempts"]
+                if "backoff_factor" in retry_config:
+                    backoff_factor = retry_config["backoff_factor"]
+                if "initial_wait" in retry_config:
+                    initial_wait = retry_config["initial_wait"]
+                    
+            op_name = operation_name or func.__name__
+            
+            # Execute with retry
+            attempt = 1
+            wait_time = initial_wait
+            last_error = None
+            
+            while attempt <= max_attempts:
+                try:
+                    if attempt > 1:
+                        logger.info(f"Retrying {op_name} (attempt {attempt}/{max_attempts}, waiting {wait_time}s)...")
+                        time.sleep(wait_time)
+                        wait_time *= backoff_factor  # Increase wait time for next attempt
+                    
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"Attempt {attempt}/{max_attempts} of {op_name} failed: {e}")
+                    attempt += 1
+            
+            # If we get here, all attempts failed
+            logger.error(f"Operation {op_name} failed after {max_attempts} attempts")
+            if last_error:
+                raise last_error
+                
+        return wrapper
+    return decorator
 
 class ContainerOperations:
     """
@@ -23,7 +83,8 @@ class ContainerOperations:
     """
     
     @staticmethod
-    def execute_command(container_id, command, check_exit_code=True):
+    @with_retry(operation_name="execute_command")
+    def execute_command(container_id, command, check_exit_code=True, config=None):
         """
         Execute a command inside a running container
         
@@ -31,6 +92,7 @@ class ContainerOperations:
             container_id: ID or name of the container
             command: List of command and arguments to execute
             check_exit_code: Whether to check the exit code (default: True)
+            config: Optional configuration dictionary for retry settings
             
         Returns:
             Command output as string
@@ -120,7 +182,8 @@ class ContainerOperations:
         return hostname
     
     @staticmethod
-    def check_server_health(container_id, port=DEFAULT_SERVER_PORT, endpoint="/"):
+    @with_retry(operation_name="check_server_health")
+    def check_server_health(container_id, port=DEFAULT_SERVER_PORT, endpoint="/", config=None):
         """
         Check if a web server in a container is healthy
         
@@ -128,12 +191,23 @@ class ContainerOperations:
             container_id: ID or name of the container
             port: Server port
             endpoint: Endpoint to check
+            config: Optional configuration dictionary for HTTP settings and retry
             
         Returns:
             True if server is responding, False otherwise
         """
         try:
-            curl_cmd = f"curl -s --connect-timeout 1 --max-time 2 http://127.0.0.1:{port}{endpoint}"
+            # Use HTTP timeouts from config if available
+            connect_timeout = 1  # Default connect timeout
+            request_timeout = 2  # Default request timeout
+            
+            if config and "http" in config:
+                if "connect_timeout" in config["http"]:
+                    connect_timeout = config["http"]["connect_timeout"]
+                if "request_timeout" in config["http"]:
+                    request_timeout = config["http"]["request_timeout"]
+            
+            curl_cmd = f"curl -s --connect-timeout {connect_timeout} --max-time {request_timeout} http://127.0.0.1:{port}{endpoint}"
             
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug(f"Checking server health with: {curl_cmd}")
@@ -157,7 +231,7 @@ class ContainerOperations:
             return False
     
     @staticmethod
-    def send_server_shutdown(container_id, port=DEFAULT_SERVER_PORT, timeout=10):
+    def send_server_shutdown(container_id, port=DEFAULT_SERVER_PORT, timeout=10, config=None):
         """
         Send a shutdown signal to a server in a container
         
@@ -165,13 +239,24 @@ class ContainerOperations:
             container_id: ID or name of the container
             port: Server port
             timeout: Shutdown timeout in seconds
+            config: Optional configuration dictionary
             
         Returns:
             True if shutdown succeeded, False otherwise
         """
         try:
+            # Use HTTP timeouts from config if available
+            connect_timeout = 1  # Default connect timeout
+            request_timeout = 2  # Default request timeout
+            
+            if config and "http" in config:
+                if "connect_timeout" in config["http"]:
+                    connect_timeout = config["http"]["connect_timeout"]
+                if "request_timeout" in config["http"]:
+                    request_timeout = config["http"]["request_timeout"]
+            
             logger.info("🛑 Sending shutdown signal to server...")
-            curl_cmd = f"curl -s --connect-timeout 1 --max-time 2 http://127.0.0.1:{port}/shutdown"
+            curl_cmd = f"curl -s --connect-timeout {connect_timeout} --max-time {request_timeout} http://127.0.0.1:{port}/shutdown"
             result = ContainerOperations.execute_command(
                 container_id, ["sh", "-c", curl_cmd], check_exit_code=False
             )

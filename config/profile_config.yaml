@@ -53,12 +53,7 @@ tests:
 # Profiling settings
 profiling:
   scalene:
-    enabled: true
-    profile_all: true   # Profile all code, not just application code
-    reduced_profile: true  # Use reduced profiling for better overhead
-    memory_sampling_rate: 100  # Memory sampling rate in Hz (higher = more accurate)
-    cpu_sampling_rate: 0.01  # CPU sampling rate in seconds (lower = more accurate)
-    pid_file: null  # Scalene PID file
+    enabled: true  # Whether to use Scalene for profiling
 
 # WRK settings optimized for profiling
 wrk:

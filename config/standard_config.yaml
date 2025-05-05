@@ -48,27 +48,19 @@ tests:
 # Profiling settings
 profiling:
   scalene:
-    enabled: true
-    profile_all: true
-    reduced_profile: true
-    memory_sampling_rate: 100
-    cpu_sampling_rate: 0.01
+    enabled: true  # Whether to use Scalene for profiling
 
 # Energy settings
 energy:
   runs: 1
   sampling_frequency: 1.0
-  cpu_isolation: 0
+  tracking_mode: "process"
   units:
     energy: "Wh"
     co2: "mgCO2e" 
     time: "s"
 
-# CodeCarbon settings
-codecarbon:
-  measure_power_secs: 1.0
-  save_interval: 30
-  tracking_mode: "process"
+# (CodeCarbon settings are defined via environment variables in container_manager.py)
 
 # WRK settings balancing profiling and throughput
 wrk:
