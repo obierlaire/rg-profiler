@@ -18,11 +18,23 @@ from src.energy_manager import EnergyManager
 
 def main():
     """Main execution function for RG Profiler"""
+    # Parse command line arguments
+    args = parse_args()
+    
+    # Configure logging level based on verbose flag
+    if args.verbose:
+        from src.logger import setup_logging
+        import logging
+        setup_logging(console_level=logging.DEBUG)
+    
     # Check for required Docker images
     check_required_images()
     
-    # Parse command line arguments
-    args = parse_args()
+    # Set up logging based on verbose flag
+    if args.verbose:
+        import logging
+        setup_logging(console_level=logging.DEBUG, detailed_format=True)
+        logger.debug("Verbose logging enabled")
     
     # Validate framework directory exists
     framework_dir = get_framework_dir(args.framework, args.language)

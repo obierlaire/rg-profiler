@@ -5,6 +5,7 @@ This module provides specific container operations like executing commands,
 copying files, retrieving logs, and health checking containers.
 """
 import sys
+import logging
 from pathlib import Path
 
 import docker
@@ -38,12 +39,20 @@ class ContainerOperations:
             Exception: If command execution fails
         """
         try:
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Executing command in container {container_id}: {command}")
+                
             container = DockerUtils.get_container(container_id)
             result = container.exec_run(command)
             
             if check_exit_code and result.exit_code != 0:
                 logger.warning(f"Command returned non-zero exit code: {result.exit_code}")
                 logger.warning(f"Command: {command}")
+                if logger.isEnabledFor(logging.DEBUG):
+                    output = result.output.decode('utf-8', errors='replace')
+                    logger.debug(f"Command output:\n{output}")
+            elif logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Command executed successfully with exit code: {result.exit_code}")
                 
             return result.output.decode('utf-8')
         except docker.errors.NotFound:
@@ -125,11 +134,26 @@ class ContainerOperations:
         """
         try:
             curl_cmd = f"curl -s --connect-timeout 1 --max-time 2 http://127.0.0.1:{port}{endpoint}"
+            
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Checking server health with: {curl_cmd}")
+                
             result = ContainerOperations.execute_command(
                 container_id, ["sh", "-c", curl_cmd], check_exit_code=False
             )
-            return len(result.strip()) > 0
-        except Exception:
+            
+            is_healthy = len(result.strip()) > 0
+            
+            if logger.isEnabledFor(logging.DEBUG):
+                status = "healthy" if is_healthy else "not responding"
+                logger.debug(f"Server health check result: {status}")
+                if is_healthy and logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"Server response: {result[:200]}...")
+                    
+            return is_healthy
+        except Exception as e:
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Server health check failed with exception: {e}")
             return False
     
     @staticmethod

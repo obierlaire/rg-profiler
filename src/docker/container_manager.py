@@ -6,6 +6,7 @@ including creation, startup, health checking, and graceful shutdown.
 """
 import sys
 import time
+import logging
 from pathlib import Path
 
 import docker
@@ -138,6 +139,17 @@ class ContainerManager:
         try:
             # Run the container
             logger.start(f"Starting container: {container_name}")
+            
+            # Log detailed configuration when in debug mode
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Container configuration:")
+                logger.debug(f"  Image: {image_name}")
+                logger.debug(f"  Network: {DOCKER_NETWORK_NAME}")
+                logger.debug(f"  Volumes: {volumes}")
+                logger.debug(f"  Environment variables:")
+                for key, value in environment.items():
+                    logger.debug(f"    {key}: {value}")
+            
             container = DockerUtils.run_container(
                 image_name,
                 name=container_name,
@@ -241,6 +253,12 @@ class ContainerManager:
                 container = DockerUtils.get_container(container_id)
                 if container.status != "running":
                     logger.error(f"Container stopped with status: {container.status}")
+                    
+                    # In debug mode, get container logs to help diagnose the issue
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logs = container.logs().decode('utf-8', errors='replace')
+                        logger.debug(f"Container logs:\n{logs}")
+                    
                     return False
                 
                 # Check if server is responding
@@ -250,6 +268,17 @@ class ContainerManager:
                 
                 # Wait before trying again
                 logger.info(f"⏳ Waiting for server... ({int(time.time() - start_time)}/{timeout}s)")
+                
+                # In debug mode, show recent container logs
+                if logger.isEnabledFor(logging.DEBUG):
+                    try:
+                        # Get only recent logs (tail)
+                        logs = container.logs(tail=10).decode('utf-8', errors='replace')
+                        if logs.strip():
+                            logger.debug(f"Recent container logs:\n{logs}")
+                    except Exception as log_error:
+                        logger.debug(f"Could not fetch container logs: {log_error}")
+                
                 time.sleep(2)
                 
             except Exception as e:

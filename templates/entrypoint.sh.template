@@ -7,6 +7,11 @@ set -x
 # Ensure output directories exist
 mkdir -p /output/scalene /output/energy /output/runs
 
+# Show framework version and installation source
+echo "Framework: {{FRAMEWORK}}"
+echo "Framework version and repository information:"
+pip show {{FRAMEWORK}} | grep -E "Version|Home-page"
+
 # Run the command provided by the runner
 echo Running cmd: {{RUN_COMMAND}}
 exec {{RUN_COMMAND}}

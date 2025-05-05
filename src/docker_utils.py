@@ -6,6 +6,7 @@ communication with the Docker daemon and provides basic operations without highe
 container lifecycle management or specialized operations.
 """
 import docker
+import logging
 from src.logger import logger
 
 class DockerUtils:
@@ -147,4 +148,10 @@ class DockerUtils:
             Built image and build logs
         """
         client = cls.get_client()
-        return client.images.build(path=path, tag=tag, **kwargs)
+        import logging
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"Building Docker image from {path} with tag {tag}")
+            logger.debug(f"Build parameters: {kwargs}")
+        
+        image, build_logs = client.images.build(path=path, tag=tag, **kwargs)
+        return image, build_logs
