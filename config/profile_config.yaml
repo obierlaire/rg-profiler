@@ -49,6 +49,60 @@ tests:
     endpoint: /memory-heavy
     script: memory.lua
     description: "Memory-intensive operation test"
+    
+  # New tests for enhanced benchmarking
+  - name: middleware_advanced
+    endpoint: /middleware-advanced
+    script: middleware.lua
+    description: "Advanced middleware chain test with configurable behaviors"
+    
+  - name: streaming_json
+    endpoint: /streaming
+    script: streaming.lua
+    description: "Streaming response test with JSON data"
+    parameters:
+      mode: json
+      size: 2000
+      chunk_size: 64
+      
+  - name: streaming_vs_nonstreaming
+    endpoint: /streaming/non-streaming
+    script: streaming_compare.lua
+    description: "Comparison of streaming vs non-streaming for large responses"
+    parameters:
+      mode: json
+      size: 2000
+      
+  - name: error_handling
+    endpoint: /errors
+    script: errors.lua
+    description: "Enhanced error handling and recovery test"
+    
+  - name: advanced_routing
+    endpoint: /routing/1/users/filter/active/sort/name
+    script: routing_advanced.lua
+    description: "Complex URL routing with nested parameters"
+    parameters:
+      complexity: 3
+      
+  - name: mixed_workload
+    endpoint: /mixed-workload
+    script: mixed_workload.lua
+    description: "Mixed workload test simulating real-world usage patterns"
+    parameters:
+      pattern: balanced
+      intensity: 3
+      fixed_seed: true
+      
+  - name: io_operations
+    endpoint: /io-ops
+    script: io_ops.lua
+    description: "File I/O operations with various buffer sizes and strategies"
+    parameters:
+      op: combined
+      buffer: 8192
+      size: 1024
+      iterations: 3
 
 # Profiling settings
 profiling:

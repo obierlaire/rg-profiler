@@ -32,6 +32,63 @@ tests:
     endpoint: /memory-heavy
     script: energy_memory.lua
     description: "Memory-intensive operation test for energy measurement"
+    
+  # New tests for enhanced energy measurement
+  - name: middleware_fixed
+    endpoint: /middleware-advanced
+    script: energy_middleware.lua
+    description: "Middleware chain test with fixed execution pattern for energy measurement"
+    parameters:
+      skip_security: false
+      simulate_rate_limit: false
+      transform_heavy: true
+      transform_response: true
+    
+  - name: streaming_fixed
+    endpoint: /streaming
+    script: energy_streaming.lua
+    description: "Streaming response test with fixed pattern for energy measurement"
+    parameters:
+      mode: json
+      size: 2000
+      chunk_size: 64
+      delay: 0
+      
+  - name: error_handling_fixed
+    endpoint: /errors
+    script: energy_errors.lua
+    description: "Error handling test with deterministic pattern for energy measurement"
+    parameters:
+      type: validation
+      recovery: 5
+      
+  - name: routing_complex_fixed
+    endpoint: /routing/123/users/filter/active/sort/name
+    script: energy_routing.lua
+    description: "Complex routing test with fixed pattern for energy measurement"
+    parameters:
+      complexity: 3
+      delay: 0
+      
+  - name: mixed_workload_fixed
+    endpoint: /mixed-workload
+    script: energy_mixed.lua
+    description: "Mixed workload with fixed execution pattern for energy measurement"
+    parameters:
+      pattern: balanced
+      intensity: 3
+      fixed_seed: true
+      
+  - name: io_operations_fixed
+    endpoint: /io-ops
+    script: energy_io.lua
+    description: "File I/O operations with fixed patterns for energy measurement"
+    parameters:
+      op: combined
+      buffer: 8192
+      size: 1024
+      iterations: 3
+      sync: buffered
 
 # Energy measurement settings
 energy:
