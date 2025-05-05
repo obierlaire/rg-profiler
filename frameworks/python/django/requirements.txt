@@ -1,13 +1,11 @@
 # Python version: 3.11
-Django==4.2.3
-asgiref==3.7.2
-sqlparse==0.4.4
+Django==5.2
+# asgiref and sqlparse are Django dependencies
 
 # Database drivers
-psycopg2-binary==2.9.6
-pymysql==1.1.0
-pymongo==4.4.0
+psycopg2-binary==2.9.10
+pymysql==1.1.1
+# djangomongodb integration isn't directly using pymongo
 
-# Performance optimizations
-gunicorn==20.1.0
-whitenoise==6.5.0
+# Static file serving
+whitenoise==6.9.0
