@@ -59,7 +59,7 @@ def main():
     # Build framework Docker image
     image_name = f"rg-profiler-{args.language}-{args.framework}"
     db_type = framework_config["database"]["type"]
-    ImageBuilder.build_framework_image(framework_dir, image_name, db_type, args.mode, args.framework)
+    ImageBuilder.build_framework_image(framework_dir, image_name, db_type, args.mode, args.framework, args.repo)
     
     # Run framework container
     container_id = ContainerManager.run_container(

@@ -111,6 +111,9 @@ Additional options for all modes:
 # Use a custom configuration file
 ./run.py --framework flask --config my_custom_config.yaml
 
+# Use a custom GitHub repository for framework version
+./run.py --framework flask --repo https://github.com/user/flask@branch
+
 # Test with a different language (future support)
 ./run.py --framework express --language javascript
 ```

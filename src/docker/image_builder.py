@@ -52,7 +52,7 @@ class ImageBuilder:
             return False
 
     @staticmethod
-    def build_framework_image(framework_dir, image_name, db_type, mode, framework_name):
+    def build_framework_image(framework_dir, image_name, db_type, mode, framework_name, custom_repo=None):
         """
         Build Docker image for a framework
 
@@ -62,6 +62,7 @@ class ImageBuilder:
             db_type: Database type to use
             mode: Profiling mode
             framework_name: Name of the framework (from CLI args)
+            custom_repo: Optional custom GitHub repository URL
 
         Returns:
             True if the image was built successfully
@@ -129,7 +130,9 @@ class ImageBuilder:
                 "DB_TYPE": db_type,
                 "DB_PORT": str(db_port),
                 # Add empty string as default for ENERGY_COPY_INSTRUCTIONS
-                "ENERGY_COPY_INSTRUCTIONS": ""
+                "ENERGY_COPY_INSTRUCTIONS": "",
+                # Add custom repo URL if provided
+                "CUSTOM_REPO_URL": custom_repo if custom_repo else ""
             }
 
             # Add energy-specific instructions if in energy mode
@@ -161,7 +164,8 @@ RUN chmod +x /app/codecarbon_wrapper.py"""
             entrypoint_path = Path(temp_dir) / "entrypoint.sh"
             entrypoint_context = {
                 "RUN_COMMAND": run_command,
-                "FRAMEWORK": framework_name
+                "FRAMEWORK": framework_name,
+                "CUSTOM_REPO_URL": custom_repo if custom_repo else ""
             }
             entrypoint_content = TemplateManager.render_template(
                 entrypoint_template, entrypoint_context)
@@ -211,4 +215,11 @@ RUN chmod +x /app/codecarbon_wrapper.py"""
 
             except Exception as e:
                 logger.error(f"Failed to build Docker image: {e}")
+                # Print Dockerfile content for debugging
+                logger.error("Dockerfile content:")
+                with open(dockerfile_path, 'r') as f:
+                    logger.error(f.read())
+                # If there are specific docker build logs available, show them
+                if hasattr(e, 'stderr') and e.stderr:
+                    logger.error(f"Docker build error details: {e.stderr.decode('utf-8')}")
                 sys.exit(1)

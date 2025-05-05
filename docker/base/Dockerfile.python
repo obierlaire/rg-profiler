@@ -8,10 +8,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     make \
     gcc \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies for profiling
-RUN pip install --no-cache-dir codecarbon scalene
+RUN pip install --no-cache-dir \
+    codecarbon \
+    scalene \
+    psutil 
 
 # Expose the server port
 EXPOSE 8080

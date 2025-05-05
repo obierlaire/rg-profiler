@@ -81,6 +81,13 @@ def parse_args():
         help="Enable verbose output"
     )
     
+    parser.add_argument(
+        "--repo", 
+        type=str, 
+        default=None,
+        help="GitHub repository URL for custom framework version (e.g., https://github.com/user/flask@branch)"
+    )
+    
     args = parser.parse_args()
     
     # Display environment information
@@ -96,6 +103,8 @@ def print_environment_info(args):
     logger.info(f"   - Frameworks root: {FRAMEWORKS_ROOT}")
     logger.info(f"   - Framework: {args.framework} ({args.language})")
     logger.info(f"   - Mode: {args.mode}")
+    if args.repo:
+        logger.info(f"   - Custom repository: {args.repo}")
     
     framework_dir = FRAMEWORKS_ROOT / args.language / args.framework
     if framework_dir.exists():

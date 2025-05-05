@@ -12,6 +12,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt psutil
 
+{% if CUSTOM_REPO_URL %}
+# Install custom framework repository
+RUN pip install git+{{ CUSTOM_REPO_URL }}
+{% endif %}
+
 # Create output directories and ensure permissions
 RUN mkdir -p /output/scalene /output/energy /output/runs && chmod -R 777 /output 
 # Double check energy directory permissions explicitly

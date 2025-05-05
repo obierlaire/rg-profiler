@@ -10,6 +10,9 @@ mkdir -p /output/scalene /output/energy /output/runs
 # Show framework version and installation source
 echo "Framework: {{FRAMEWORK}}"
 echo "Framework version and repository information:"
+{% if CUSTOM_REPO_URL %}
+echo "Using custom repository: {{CUSTOM_REPO_URL}}"
+{% endif %}
 pip show {{FRAMEWORK}} | grep -E "Version|Home-page"
 
 # Run the command provided by the runner
