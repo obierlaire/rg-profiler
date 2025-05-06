@@ -4,13 +4,13 @@ Tests various middleware configurations to measure overhead and performance
 ]]--
 
 -- Tracking counters
-requests = 0
-responses = 0
-errors = 0
-total_middleware_time = 0
-middleware_chains = {}
-times = {}
-slow_responses = 0
+local request_counter = 0
+local responses = 0
+local errors = 0
+local total_middleware_time = 0
+local middleware_chains = {}
+local times = {}
+local slow_responses = 0
 
 -- Configuration patterns to test
 local patterns = {
@@ -65,10 +65,10 @@ end
 -- Request function - called for each request
 function request()
   -- Track requests
-  requests = requests + 1
+  request_counter = request_counter + 1
   
   -- Select a pattern based on the request number to ensure we test all patterns
-  local current_pattern = patterns[(requests % #patterns) + 1]
+  local current_pattern = patterns[(request_counter % #patterns) + 1]
   
   -- Build the URL with query parameters
   local url = "/middleware-advanced?"
@@ -79,7 +79,7 @@ function request()
   end
   
   -- Add headers parameter
-  local headers_count = math.min(5, requests % 10) -- 0-5 custom headers
+  local headers_count = math.min(5, request_counter % 10) -- 0-5 custom headers
   if headers_count > 0 then
     local header_list = {}
     for i=1,headers_count do
@@ -89,8 +89,8 @@ function request()
   end
   
   -- Add some sleep time occasionally to simulate endpoint processing
-  if requests % 7 == 0 then
-    local sleep_time = (requests % 5) * 0.01 -- 0-0.04 seconds
+  if request_counter % 7 == 0 then
+    local sleep_time = (request_counter % 5) * 0.01 -- 0-0.04 seconds
     table.insert(params, "sleep_time=" .. sleep_time)
   end
   
@@ -160,7 +160,7 @@ function done(summary, latency, requests)
   end
   
   io.write("\n----- Middleware Test Results -----\n")
-  io.write("Requests: " .. requests .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
+  io.write("Requests: " .. requests.total .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
   io.write("Average middleware time: " .. string.format("%.2f", avg_middleware_time) .. "ms\n")
   io.write("Slow responses (>20ms): " .. slow_responses .. "\n")
   

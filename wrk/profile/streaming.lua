@@ -4,13 +4,13 @@ Tests different streaming configurations to measure performance impact
 ]]--
 
 -- Tracking counters
-requests = 0
-responses = 0
-errors = 0
-streaming_sizes = {}
-chunk_counts = {}
-total_response_time = 0
-avg_response_size = 0
+local request_counter = 0
+local responses = 0
+local errors = 0
+local streaming_sizes = {}
+local chunk_counts = {}
+local total_response_time = 0
+local avg_response_size = 0
 
 -- Configuration patterns for testing different streaming scenarios
 local patterns = {
@@ -39,10 +39,10 @@ end
 
 -- Request function - called for each request
 function request()
-  requests = requests + 1
+  request_counter = request_counter + 1
   
   -- Select a pattern based on the request number
-  local pattern_idx = (requests % #patterns) + 1
+  local pattern_idx = (request_counter % #patterns) + 1
   local pattern = patterns[pattern_idx]
   
   -- Build the URL with query parameters
@@ -108,7 +108,7 @@ function done(summary, latency, requests)
   end
   
   io.write("\n----- Streaming Test Results -----\n")
-  io.write("Requests: " .. requests .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
+  io.write("Requests: " .. requests.total .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
   io.write("Average response size: " .. string.format("%.2f", avg_response_size / 1024) .. " KB\n")
   
   if avg_response_time > 0 then

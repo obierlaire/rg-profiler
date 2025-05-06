@@ -4,13 +4,13 @@ Tests complex URL pattern recognition, parameter extraction, and type conversion
 ]]--
 
 -- Tracking counters
-requests = 0
-responses = 0
-errors = 0
-total_routes_checked = 0
-total_processing_time = 0
-segment_counts = {}
-param_counts = {}
+local request_counter = 0
+local responses = 0
+local errors = 0
+local total_routes_checked = 0
+local total_processing_time = 0
+local segment_counts = {}
+local param_counts = {}
 
 -- Routing patterns to test
 local patterns = {
@@ -42,22 +42,22 @@ end
 
 -- Request function - called for each request
 function request()
-  requests = requests + 1
+  request_counter = request_counter + 1
   
   -- Select a routing pattern
-  local pattern_idx = (requests % #patterns) + 1
+  local pattern_idx = (request_counter % #patterns) + 1
   local path = patterns[pattern_idx]
   
   -- Select a complexity level
-  local complexity_idx = (math.floor(requests / #patterns) % #complexity_levels) + 1
+  local complexity_idx = (math.floor(request_counter / #patterns) % #complexity_levels) + 1
   local complexity = complexity_levels[complexity_idx]
   
   -- Build the URL with query parameters
   local url = path .. "?complexity=" .. complexity
   
   -- Add delay occasionally for performance testing
-  if requests % 5 == 0 then
-    url = url .. "&delay=" .. (requests % 10) * 0.01  -- 0 to 0.09 seconds
+  if request_counter % 5 == 0 then
+    url = url .. "&delay=" .. (request_counter % 10) * 0.01  -- 0 to 0.09 seconds
   end
   
   -- Set Accept header
@@ -131,7 +131,7 @@ function done(summary, latency, requests)
   end
   
   io.write("\n----- Advanced Routing Test Results -----\n")
-  io.write("Requests: " .. requests .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
+  io.write("Requests: " .. requests.total .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
   io.write("Average routes checked: " .. string.format("%.2f", avg_routes_checked) .. "\n")
   
   if avg_processing_time > 0 then

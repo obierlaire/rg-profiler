@@ -4,12 +4,12 @@ Directly compares performance characteristics of streaming and non-streaming end
 ]]--
 
 -- Tracking counters
-requests = 0
-responses = 0
-errors = 0
-sizes = {}
-content_types = {}
-response_times = {}
+local request_counter = 0
+local responses = 0
+local errors = 0
+local sizes = {}
+local content_types = {}
+local response_times = {}
 
 -- Configuration patterns for testing
 local patterns = {
@@ -29,10 +29,10 @@ end
 
 -- Request function - called for each request
 function request()
-  requests = requests + 1
+  request_counter = request_counter + 1
   
   -- Select a pattern based on the request number
-  local pattern_idx = (requests % #patterns) + 1
+  local pattern_idx = (request_counter % #patterns) + 1
   local pattern = patterns[pattern_idx]
   
   -- Build the URL with query parameters
@@ -93,7 +93,7 @@ end
 -- Done function - called at the end of the benchmark
 function done(summary, latency, requests)
   io.write("\n----- Non-Streaming Response Test Results -----\n")
-  io.write("Requests: " .. requests .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
+  io.write("Requests: " .. requests.total .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
   
   -- Calculate average response time
   local avg_response_time = 0

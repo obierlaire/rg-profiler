@@ -4,9 +4,9 @@ Uses a fixed, deterministic pattern for energy measurement
 ]]--
 
 -- Tracking counters
-requests = 0
-responses = 0
-errors = 0
+local request_counter = 0
+local responses = 0
+local errors = 0
 
 -- Fixed configuration for reproducible energy measurement
 local config = {
@@ -17,7 +17,7 @@ local config = {
 
 -- Request function - called for each request
 function request()
-  requests = requests + 1
+  request_counter = request_counter + 1
   
   -- Build the URL with fixed query parameters
   local url = string.format(
@@ -46,7 +46,7 @@ end
 -- Done function - called at the end of the benchmark
 function done(summary, latency, requests)
   io.write("\n----- Mixed Workload Energy Test Results -----\n")
-  io.write("Requests: " .. requests .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
+  io.write("Requests: " .. requests.total .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
   io.write("Configuration: pattern=balanced, intensity=3, fixed_seed=true\n")
   io.write("This test measures mixed workload energy consumption with a fixed pattern\n")
 end

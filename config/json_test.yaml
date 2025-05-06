@@ -1,0 +1,15 @@
+mode: energy
+
+tests:
+  - name: json_fixed
+    endpoint: /json
+    script: energy_json.lua
+    description: "JSON serialization test for energy measurement"
+
+wrk:
+  duration: 90  # Longer duration
+  max_concurrency: 16  # Higher concurrency
+  levels: "16"
+
+energy:
+  runs: 3  # Multiple runs for statistical significance

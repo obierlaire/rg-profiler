@@ -4,13 +4,13 @@ Simulates real-world usage patterns with different workload configurations
 ]]--
 
 -- Tracking counters
-requests = 0
-responses = 0
-errors = 0
-pattern_counts = {}
-task_counts = {}
-task_times = {}
-total_times = {}
+local request_counter = 0
+local responses = 0
+local errors = 0
+local pattern_counts = {}
+local task_counts = {}
+local task_times = {}
+local total_times = {}
 
 -- Workload patterns to test
 local patterns = {
@@ -32,18 +32,18 @@ end
 
 -- Request function - called for each request
 function request()
-  requests = requests + 1
+  request_counter = request_counter + 1
   
   -- Select a workload pattern
-  local pattern_idx = (requests % #patterns) + 1
+  local pattern_idx = (request_counter % #patterns) + 1
   local pattern = patterns[pattern_idx]
   
   -- Select an intensity level
-  local intensity_idx = (math.floor(requests / #patterns) % #intensities) + 1
+  local intensity_idx = (math.floor(request_counter / #patterns) % #intensities) + 1
   local intensity = intensities[intensity_idx]
   
   -- Select fixed seed setting
-  local seed_idx = (math.floor(requests / (#patterns * #intensities)) % #fixed_seeds) + 1
+  local seed_idx = (math.floor(request_counter / (#patterns * #intensities)) % #fixed_seeds) + 1
   local fixed_seed = fixed_seeds[seed_idx]
   
   -- Build the URL with query parameters
@@ -131,7 +131,7 @@ end
 -- Done function - called at the end of the benchmark
 function done(summary, latency, requests)
   io.write("\n----- Mixed Workload Test Results -----\n")
-  io.write("Requests: " .. requests .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
+  io.write("Requests: " .. requests.total .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
   
   -- Print pattern distribution
   io.write("\nWorkload pattern distribution:\n")

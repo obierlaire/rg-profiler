@@ -4,14 +4,14 @@ Tests various file I/O configurations to measure performance impact
 ]]--
 
 -- Tracking counters
-requests = 0
-responses = 0
-errors = 0
-operation_counts = {}
-buffer_counts = {}
-size_counts = {}
-sync_mode_counts = {}
-timing_data = {}
+local request_counter = 0
+local responses = 0
+local errors = 0
+local operation_counts = {}
+local buffer_counts = {}
+local size_counts = {}
+local sync_mode_counts = {}
+local timing_data = {}
 
 -- I/O operation types to test
 local operations = { "read", "write", "append", "combined" }
@@ -31,19 +31,19 @@ end
 
 -- Request function - called for each request
 function request()
-  requests = requests + 1
+  request_counter = request_counter + 1
   
   -- Select parameters based on request number to ensure coverage of all combinations
-  local op_idx = (requests % #operations) + 1
+  local op_idx = (request_counter % #operations) + 1
   local operation = operations[op_idx]
   
-  local buffer_idx = (math.floor(requests / #operations) % #buffer_sizes) + 1
+  local buffer_idx = (math.floor(request_counter / #operations) % #buffer_sizes) + 1
   local buffer_size = buffer_sizes[buffer_idx]
   
-  local size_idx = (math.floor(requests / (#operations * #buffer_sizes)) % #file_sizes) + 1
+  local size_idx = (math.floor(request_counter / (#operations * #buffer_sizes)) % #file_sizes) + 1
   local file_size = file_sizes[size_idx]
   
-  local sync_idx = (math.floor(requests / (#operations * #buffer_sizes * #file_sizes)) % #sync_modes) + 1
+  local sync_idx = (math.floor(request_counter / (#operations * #buffer_sizes * #file_sizes)) % #sync_modes) + 1
   local sync_mode = sync_modes[sync_idx]
   
   -- Determine iterations (keep low for larger files)
@@ -126,7 +126,7 @@ end
 -- Done function - called at the end of the benchmark
 function done(summary, latency, requests)
   io.write("\n----- I/O Operations Test Results -----\n")
-  io.write("Requests: " .. requests .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
+  io.write("Requests: " .. requests.total .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
   
   -- Print operation distribution
   io.write("\nOperation type distribution:\n")

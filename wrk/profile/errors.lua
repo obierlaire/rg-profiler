@@ -4,13 +4,13 @@ Tests various error scenarios and measures recovery performance
 ]]--
 
 -- Tracking counters
-requests = 0
-responses = 0
-errors = 0
-status_codes = {}
-error_types = {}
-recovery_times = {}
-request_times = {}
+local request_counter = 0
+local responses = 0
+local errors = 0
+local status_codes = {}
+local error_types = {}
+local recovery_times = {}
+local request_times = {}
 
 -- Error scenarios to test
 local scenarios = {
@@ -45,14 +45,14 @@ end
 
 -- Request function - called for each request
 function request()
-  requests = requests + 1
+  request_counter = request_counter + 1
   
   -- Select an error scenario
-  local scenario_idx = (requests % #scenarios) + 1
+  local scenario_idx = (request_counter % #scenarios) + 1
   local scenario = scenarios[scenario_idx]
   
   -- Select a recovery time setting
-  local recovery_idx = (math.floor(requests / #scenarios) % #recovery_settings) + 1
+  local recovery_idx = (math.floor(request_counter / #scenarios) % #recovery_settings) + 1
   local recovery = recovery_settings[recovery_idx]
   
   -- Build the URL with query parameters
@@ -126,7 +126,7 @@ end
 -- Done function - called at the end of the benchmark
 function done(summary, latency, requests)
   io.write("\n----- Error Handling Test Results -----\n")
-  io.write("Requests: " .. requests .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
+  io.write("Requests: " .. requests.total .. ", Responses: " .. responses .. ", Errors: " .. errors .. "\n")
   
   -- Print status code distribution
   io.write("\nStatus code distribution:\n")

@@ -3,14 +3,14 @@ WRK script for simple template rendering testing
 ]]--
 
 -- Track statistics
-requests = 0
-responses = 0
-errors = 0
-html_responses = 0
+local request_counter = 0
+local responses = 0
+local errors = 0
+local html_responses = 0
 
 function request()
    -- Increment request counter
-   requests = requests + 1
+   request_counter = request_counter + 1
    
    -- Set Accept header for HTML response
    wrk.headers["Accept"] = "text/html"
