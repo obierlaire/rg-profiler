@@ -188,7 +188,8 @@ class ConfigManager:
                 self.config["energy"]["sampling_frequency"] = args.sampling_frequency
                 
             if hasattr(args, 'cpu_isolation') and args.cpu_isolation is not None:
-                self.config["energy"]["cpu_isolation"] = 0 if args.cpu_isolation == "on" else 1
+                # Convert the CLI option to the appropriate tracking_mode
+                self.config["energy"]["tracking_mode"] = "process" if args.cpu_isolation == "on" else "machine"
         
         # WRK settings overrides
         if hasattr(args, 'wrk_duration') and args.wrk_duration is not None:

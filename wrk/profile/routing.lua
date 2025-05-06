@@ -3,26 +3,26 @@ WRK script for complex routing testing - measures URL parameter parsing performa
 ]]--
 
 -- Track statistics
-requests = 0
-responses = 0
-errors = 0
-valid_responses = 0
+local request_counter = 0
+local responses = 0
+local errors = 0
+local valid_responses = 0
 
 -- Sample IDs and parameters
-ids = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}
-names = {"user", "admin", "test", "guest", "customer", "client", "staff", "member", "visitor", "student"}
-param1s = {"active", "disabled", "pending", "approved", "rejected", "success", "error", "warning", "info", "debug"}
-param2s = {"high", "medium", "low", "urgent", "normal", "critical", "minor", "major", "blocker", "trivial"}
+local ids = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}
+local names = {"user", "admin", "test", "guest", "customer", "client", "staff", "member", "visitor", "student"}
+local param1s = {"active", "disabled", "pending", "approved", "rejected", "success", "error", "warning", "info", "debug"}
+local param2s = {"high", "medium", "low", "urgent", "normal", "critical", "minor", "major", "blocker", "trivial"}
 
 function request()
    -- Increment request counter
-   requests = requests + 1
+   request_counter = request_counter + 1
    
    -- Build complex route with different parameters each time
-   local id = ids[requests % #ids + 1]
-   local name = names[requests % #names + 1]
-   local param1 = param1s[requests % #param1s + 1]
-   local param2 = param2s[requests % #param2s + 1]
+   local id = ids[request_counter % #ids + 1]
+   local name = names[request_counter % #names + 1]
+   local param1 = param1s[request_counter % #param1s + 1]
+   local param2 = param2s[request_counter % #param2s + 1]
    
    local path = "/complex-routing/" .. id .. "/" .. name .. "/" .. param1 .. "/" .. param2
    

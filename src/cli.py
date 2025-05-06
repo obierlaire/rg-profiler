@@ -72,7 +72,7 @@ def parse_args():
         "--cpu-isolation", 
         choices=["on", "off"], 
         default=None,
-        help="Enable/disable CPU isolation for energy mode (Linux only)"
+        help="Set tracking mode for energy measurement: 'on' = process tracking (better isolation), 'off' = machine tracking (lower overhead)"
     )
     
     parser.add_argument(

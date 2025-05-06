@@ -42,10 +42,12 @@ class ContainerManager:
         Raises:
             SystemExit: If container creation fails
         """
-        container_name = f"rg-profiler-{image_name.split(':')[0]}"
+        # Use container prefix from config if available, otherwise use default
+        container_prefix = framework_config.get("docker", {}).get("container_prefix", "rg-profiler")
+        container_name = f"{container_prefix}-{image_name.split(':')[0]}"
         
         # Stop any existing container with the same name
-        ContainerManager.stop_container_if_exists(container_name)
+        ContainerManager.stop_container_if_exists(container_name, framework_config)
 
         # Prepare mount point for output directory
         volumes = {
@@ -87,8 +89,13 @@ class ContainerManager:
 
         # Add energy tracking configuration if in energy mode
         if mode == "energy":
+            # Get tracking mode from framework config (default to "process")
+            tracking_mode = "process"
+            if "energy" in framework_config and "tracking_mode" in framework_config["energy"]:
+                tracking_mode = framework_config["energy"]["tracking_mode"]
+                
             environment.update({
-                "CODECARBON_TRACKING_MODE": "machine",
+                "CODECARBON_TRACKING_MODE": tracking_mode,
                 "CODECARBON_OUTPUT_DIR": "/output/energy",
                 "CODECARBON_OUTPUT_FILE": "emissions.csv",
                 "CODECARBON_SAVE_INTERVAL": "10",
@@ -123,13 +130,16 @@ class ContainerManager:
         Raises:
             SystemExit: If container creation or startup fails
         """
+        # Get network name from config if available, otherwise use default
+        network_name = framework_config.get("docker", {}).get("network_name", DOCKER_NETWORK_NAME)
+        
         # Ensure Docker network exists
-        networks = DockerUtils.list_networks(names=[DOCKER_NETWORK_NAME])
+        networks = DockerUtils.list_networks(names=[network_name])
         if not networks:
-            DockerUtils.create_network(DOCKER_NETWORK_NAME)
-            logger.success(f"Created Docker network: {DOCKER_NETWORK_NAME}")
+            DockerUtils.create_network(network_name)
+            logger.success(f"Created Docker network: {network_name}")
         else:
-            logger.success(f"Using existing network: {DOCKER_NETWORK_NAME}")
+            logger.success(f"Using existing network: {network_name}")
         
         # Configure container
         container_name, volumes, environment = ContainerManager.create_container(
@@ -154,7 +164,7 @@ class ContainerManager:
                 image_name,
                 name=container_name,
                 detach=True,
-                network=DOCKER_NETWORK_NAME,
+                network=network_name,
                 volumes=volumes,
                 environment=environment
             )
@@ -165,7 +175,7 @@ class ContainerManager:
             if ContainerManager.wait_for_container_ready(container.id, framework_config):
                 return container.id
             else:
-                ContainerManager.stop_container(container.id)
+                ContainerManager.stop_container(container.id, framework_config)
                 logger.error(f"Container failed to become ready")
                 sys.exit(1)
 
@@ -174,20 +184,26 @@ class ContainerManager:
             sys.exit(1)
 
     @staticmethod
-    def stop_container_if_exists(container_name):
+    def stop_container_if_exists(container_name, config=None):
         """
         Stop and remove a container if it exists
         
         Args:
             container_name: Name of the container
+            config: Optional configuration dictionary
             
         Returns:
             True if container was stopped, False if it didn't exist
         """
         try:
+            # Get stop timeout from config if available
+            stop_timeout = 5  # Default value
+            if config and "docker" in config and "stop_timeout" in config["docker"]:
+                stop_timeout = config["docker"]["stop_timeout"]
+            
             container = DockerUtils.get_container(container_name)
             logger.info(f"🛑 Stopping existing container: {container_name}")
-            container.stop(timeout=5)
+            container.stop(timeout=stop_timeout)
             logger.info(f"🗑️ Removing container: {container_name}")
             container.remove()
             logger.success(f"Removed existing container: {container_name}")
@@ -199,12 +215,13 @@ class ContainerManager:
             sys.exit(1)
 
     @staticmethod
-    def stop_container(container_id_or_name):
+    def stop_container(container_id_or_name, config=None):
         """
         Stop and remove a Docker container
         
         Args:
             container_id_or_name: Container ID or name
+            config: Optional configuration dictionary
             
         Returns:
             True if container was stopped successfully
@@ -213,9 +230,14 @@ class ContainerManager:
             SystemExit: If container stop fails
         """
         try:
+            # Get stop timeout from config if available
+            stop_timeout = 10  # Default value
+            if config and "docker" in config and "stop_timeout" in config["docker"]:
+                stop_timeout = config["docker"]["stop_timeout"]
+                
             container = DockerUtils.get_container(container_id_or_name)
             logger.info(f"🛑 Stopping container: {container.name}")
-            container.stop(timeout=10)
+            container.stop(timeout=stop_timeout)
             logger.info(f"🗑️ Removing container: {container.name}")
             container.remove()
             return True
@@ -227,21 +249,28 @@ class ContainerManager:
             sys.exit(1)
 
     @staticmethod
-    def wait_for_container_ready(container_id, framework_config, timeout=DEFAULT_STARTUP_TIMEOUT):
+    def wait_for_container_ready(container_id, framework_config, timeout=None):
         """
         Wait for the container to be ready to receive requests
         
         Args:
             container_id: Container ID
             framework_config: Framework configuration
-            timeout: Maximum time to wait in seconds
+            timeout: Maximum time to wait in seconds (optional, uses config or default)
             
         Returns:
             True if container is ready, False otherwise
         """
         server_port = framework_config.get("server", {}).get("port", DEFAULT_SERVER_PORT)
         
-        logger.info(f"⏳ Waiting for framework server to be ready...")
+        # Get timeout from arguments, config, or use default
+        if timeout is None:
+            timeout = framework_config.get("docker", {}).get("health_check_timeout", DEFAULT_STARTUP_TIMEOUT)
+        
+        # Get health check interval from config or use default
+        check_interval = framework_config.get("docker", {}).get("health_check_interval", 2)
+        
+        logger.info(f"⏳ Waiting for framework server to be ready (timeout: {timeout}s, interval: {check_interval}s)...")
         
         # Give the container a few seconds to start
         time.sleep(3)
@@ -262,7 +291,7 @@ class ContainerManager:
                     return False
                 
                 # Check if server is responding
-                if ContainerOperations.check_server_health(container_id, server_port):
+                if ContainerOperations.check_server_health(container_id, server_port, "/", framework_config):
                     logger.success(f"Server is ready")
                     return True
                 
@@ -279,11 +308,11 @@ class ContainerManager:
                     except Exception as log_error:
                         logger.debug(f"Could not fetch container logs: {log_error}")
                 
-                time.sleep(2)
+                time.sleep(check_interval)
                 
             except Exception as e:
                 logger.warning(f"Error checking readiness: {e}")
-                time.sleep(2)
+                time.sleep(check_interval)
         
         logger.error("Timeout waiting for server to become ready")
         return False
@@ -311,7 +340,7 @@ class ContainerManager:
         server_port = framework_config["server"]["port"]
 
         # Send shutdown signal to server
-        ContainerOperations.send_server_shutdown(container_id, server_port)
+        ContainerOperations.send_server_shutdown(container_id, server_port, 10, framework_config)
 
         # Wait for container to stop
         try:
@@ -329,10 +358,10 @@ class ContainerManager:
                 time.sleep(1)
 
             logger.warning("Container didn't shutdown gracefully, forcing stop")
-            ContainerManager.stop_container(container_id)
+            ContainerManager.stop_container(container_id, framework_config)
             return False
 
         except Exception as e:
             logger.error(f"Error during graceful shutdown: {e}")
-            ContainerManager.stop_container(container_id)
+            ContainerManager.stop_container(container_id, framework_config)
             sys.exit(1)

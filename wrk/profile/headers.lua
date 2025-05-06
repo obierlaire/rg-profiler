@@ -3,14 +3,14 @@ WRK script for header parsing testing - measures header processing performance
 ]]--
 
 -- Track statistics
-requests = 0
-responses = 0
-errors = 0
-valid_responses = 0
+local request_counter = 0
+local responses = 0
+local errors = 0
+local valid_responses = 0
 
 function request()
    -- Increment request counter
-   requests = requests + 1
+   request_counter = request_counter + 1
    
    -- Set many custom headers to test header parsing
    wrk.headers["Accept"] = "application/json"

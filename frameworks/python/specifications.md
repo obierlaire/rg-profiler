@@ -110,17 +110,26 @@ Implement all of the following endpoints with consistent behavior across framewo
 | `/queries?queries=n` | Perform n random queries (default 1, max 500) and return as JSON array | GET |
 | `/complex-routing/:id/:name/:param1/:param2` | Return JSON with parsed parameters | GET |
 | `/middleware` | Return timing data about the middleware execution chain | GET |
+| `/middleware-advanced` | Advanced middleware chain with configurable behaviors and dynamic loading | GET |
 | `/template-simple` | Render a simple template with title, message, and timestamp | GET |
 | `/template-complex` | Render a complex template with fortune data, loops, conditions, and includes | GET |
 | `/session-write` | Create a new session with sample data and return session info | GET |
 | `/session-read` | Read and return data from an existing session | GET |
 | `/error-handling?type=[error_type]` | Trigger and handle different error types | GET |
+| `/errors` | Enhanced error handling with different error types and recovery strategies | GET |
 | `/header-parsing` | Return parsed HTTP headers as JSON | GET |
 | `/regex-heavy` | Apply multiple regex patterns and return results | GET |
+| `/routing/:id/users/filter/:filter/sort/:sort` | Complex URL routing with nested parameters and type conversions | GET |
 | `/serialization` | Serialize complex nested object structures to JSON | GET |
 | `/deserialization` | Parse and process complex JSON input | POST |
+| `/streaming` | Streaming response with JSON data chunks sent incrementally | GET |
+| `/streaming/non-streaming` | Endpoint that provides same data in non-streaming format for comparison | GET |
 | `/cpu-intensive?complexity=[1-10]` | Perform CPU-intensive operations (Fibonacci, primes, matrix, sorting) | GET |
 | `/memory-heavy?size=[1-10]` | Allocate and process large memory structures | GET |
+| `/mixed-workload` | Combined endpoint that exercises multiple framework features in a real-world pattern | GET |
+| `/io-ops?buffer_size=[size]&strategy=[strategy]` | File I/O operations with various buffer sizes and processing strategies | GET |
+| `/database-connection-pool` | Tests database connection pooling efficiency | GET |
+| `/cpu-state-transition` | Endpoint with deliberate idle periods to test CPU power state transitions | GET |
 | `/shutdown` | Gracefully terminate the server | GET |
 
 ## Database Models
@@ -144,6 +153,51 @@ Implement middleware to:
 2. Simulate security checks
 3. Track rate limiting statistics
 4. Add timing information to request objects
+5. Perform request validation with configurable strictness (for advanced middleware testing)
+6. Simulate authentication and authorization checks
+7. Implement response compression
+8. Add custom response headers based on request properties
+
+## Implementation Details for Enhanced Endpoints
+
+### Streaming Response (`/streaming`)
+- Implement a streaming response mechanism that sends data in chunks
+- Use framework-specific streaming capabilities
+- Include timing information between chunks
+- Stream a large JSON dataset in manageable pieces
+
+### Advanced Error Handling (`/errors`)
+- Implement comprehensive error handling for different error types
+- Support custom error pages and responses
+- Include error recovery strategies
+- Measure performance impact of error handling
+
+### Complex Routing (`/routing/:id/users/filter/:filter/sort/:sort`)
+- Implement nested URL parameter handling
+- Support path parameter type conversion
+- Test routing middleware overhead
+- Measure impact of routing complexity on performance
+
+### Mixed Workload (`/mixed-workload`)
+- Create an endpoint that exercises multiple framework features
+- Combine database queries, template rendering, and JSON processing
+- Simulate a typical production request pattern
+- Include metrics for each component of the request
+
+### I/O Operations (`/io-ops`)
+- Test file reading and writing with different buffer sizes
+- Implement various I/O strategies (blocking, non-blocking, buffered)
+- Measure impact of I/O operations on energy consumption
+
+### Database Connection Pooling (`/database-connection-pool`)
+- Implement connection pooling with configurable pool sizes
+- Test connection reuse efficiency
+- Measure connection establishment overhead
+
+### CPU State Transition Testing (`/cpu-state-transition`)
+- Implement deliberate idle periods to test power state transitions
+- Alternate between CPU-intensive and idle phases
+- Measure energy impact of different workload patterns
 
 ## Implementation Guidelines
 
@@ -156,15 +210,7 @@ Implement middleware to:
 7. Use the built-in server of the framework for profiling (avoid external WSGI servers like Gunicorn)
 8. Use single-threaded or single-process mode when possible (for better profiling accuracy)
 9. For Scalene compatibility, avoid multi-process or multi-worker configurations
+10. Implement memory allocation tracking where possible
+11. Add instrumentation for measuring I/O operations
+12. Include detailed timing information for request processing stages
 
-## Testing
-
-The implementation will be tested by:
-1. Verifying all endpoints return the expected data
-2. Checking for consistent behavior across frameworks
-3. Profiling performance characteristics
-4. Measuring energy consumption
-
-## Example
-
-For reference, the Flask and Django implementations are available in the repository. Follow their patterns while adapting to your framework's specific architecture.

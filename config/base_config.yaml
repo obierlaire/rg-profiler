@@ -4,11 +4,7 @@
 # Profiling settings
 profiling:
   scalene:
-    enabled: true
-    profile_all: true
-    reduced_profile: false
-    memory_sampling_rate: 100  # Memory sampling rate in Hz
-    cpu_sampling_rate: 0.01  # CPU sampling rate in seconds
+    enabled: true  # Whether to use Scalene for profiling
 
 # WRK settings
 wrk:

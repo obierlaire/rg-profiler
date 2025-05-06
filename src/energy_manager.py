@@ -61,7 +61,8 @@ class EnergyManager:
                     script,
                     config["wrk"]["duration"],
                     config["wrk"]["max_concurrency"],
-                    "energy"
+                    "energy",
+                    config
                 )
 
                 # Stop energy tracking after the test
@@ -74,7 +75,7 @@ class EnergyManager:
                 time.sleep(config["server"]["recovery_time"])
 
             # Save energy data for this run
-            EnergyManager._save_energy_run_data(container_id, run_dir, run_num)
+            EnergyManager._save_energy_run_data(container_id, run_dir, run_num, config)
 
             # Interval between runs
             if run_num < runs:
@@ -87,10 +88,10 @@ class EnergyManager:
         
         # Ensure container stops completely in energy mode
         logger.info("🔋 Energy mode: ensuring container is fully stopped")
-        ContainerManager.stop_container(container_id)
+        ContainerManager.stop_container(container_id, framework_config)
 
         # Process all runs
-        EnergyManager.combine_energy_runs(output_dir, runs)
+        EnergyManager.combine_energy_runs(output_dir, runs, config)
 
         return True
 
@@ -107,8 +108,15 @@ class EnergyManager:
         return True
 
     @staticmethod
-    def _save_energy_run_data(container_id, run_dir, run_num):
-        """Save energy data for a specific run"""
+    def _save_energy_run_data(container_id, run_dir, run_num, config=None):
+        """Save energy data for a specific run
+        
+        Args:
+            container_id: Container ID
+            run_dir: Directory to save run data to
+            run_num: Run number
+            config: Optional configuration for HTTP settings
+        """
         try:
             # Make sure the energy directory exists in the container
             ContainerOperations.execute_command(
@@ -121,7 +129,7 @@ class EnergyManager:
             server_port = 8080  # Default server port
 
             # Send shutdown signal to server
-            ContainerOperations.send_server_shutdown(container_id, server_port)
+            ContainerOperations.send_server_shutdown(container_id, server_port, 10, config)
 
             # Wait for emissions file to be created (with timeout)
             logger.info("⏳ Waiting for CodeCarbon to save emissions data...")
@@ -193,7 +201,7 @@ class EnergyManager:
                 language = run_dir.parent.parent.parent.parent.name
 
                 energy_report = EnergyManager.generate_energy_report(
-                    energy_data, framework, language)
+                    energy_data, framework, language, config)
                 energy_path = run_dir / "energy.json"
 
                 with open(energy_path, 'w') as f:
@@ -279,35 +287,142 @@ class EnergyManager:
             sys.exit(1)
 
     @staticmethod
-    def generate_energy_report(energy_data, framework, language):
-        """Generate a comprehensive energy report"""
-        # Convert CO2 to mg if it's in kg (CodeCarbon uses kg)
-        emissions_mg = energy_data.get(
-            "emissions", 0) * 1000000  # kg to mg conversion
-
+    def generate_energy_report(energy_data, framework, language, config=None):
+        """
+        Generate a comprehensive energy report
+        
+        Args:
+            energy_data: Energy data from CodeCarbon
+            framework: Framework name
+            language: Language name
+            config: Configuration dictionary with units settings
+            
+        Returns:
+            Energy report dictionary
+        """
+        # Get units from config if available
+        units = {
+            "energy": "Wh",     # Default unit for energy
+            "co2": "mgCO2e",    # Default unit for CO2
+            "time": "s"         # Default unit for time
+        }
+        
+        if config and "energy" in config and "units" in config["energy"]:
+            config_units = config["energy"]["units"]
+            if "energy" in config_units:
+                units["energy"] = config_units["energy"]
+            if "co2" in config_units:
+                units["co2"] = config_units["co2"]
+            if "time" in config_units:
+                units["time"] = config_units["time"]
+                
+        # Convert base energy value (CodeCarbon outputs Wh)
+        total_energy = energy_data.get("energy_consumed", 0)
+        cpu_energy = energy_data.get("cpu_energy", 0)
+        ram_energy = energy_data.get("ram_energy", 0)
+        gpu_energy = energy_data.get("gpu_energy", 0)
+        
+        # Convert energy to requested units
+        energy_values = {}
+        if units["energy"] == "Wh":
+            energy_values = {
+                f"total_{units['energy']}": total_energy,
+                f"cpu_{units['energy']}": cpu_energy,
+                f"ram_{units['energy']}": ram_energy,
+                f"gpu_{units['energy']}": gpu_energy
+            }
+        elif units["energy"] == "kWh":
+            energy_values = {
+                f"total_{units['energy']}": total_energy / 1000,
+                f"cpu_{units['energy']}": cpu_energy / 1000,
+                f"ram_{units['energy']}": ram_energy / 1000,
+                f"gpu_{units['energy']}": gpu_energy / 1000
+            }
+        elif units["energy"] == "J":
+            # 1 Wh = 3600 J
+            energy_values = {
+                f"total_{units['energy']}": total_energy * 3600,
+                f"cpu_{units['energy']}": cpu_energy * 3600,
+                f"ram_{units['energy']}": ram_energy * 3600,
+                f"gpu_{units['energy']}": gpu_energy * 3600
+            }
+        elif units["energy"] == "kJ":
+            # 1 Wh = 3.6 kJ
+            energy_values = {
+                f"total_{units['energy']}": total_energy * 3.6,
+                f"cpu_{units['energy']}": cpu_energy * 3.6,
+                f"ram_{units['energy']}": ram_energy * 3.6,
+                f"gpu_{units['energy']}": gpu_energy * 3.6
+            }
+        else:
+            # Default to Wh if unknown unit
+            energy_values = {
+                "total_Wh": total_energy,
+                "cpu_Wh": cpu_energy,
+                "ram_Wh": ram_energy,
+                "gpu_Wh": gpu_energy
+            }
+            
+        # Convert CO2 emissions (CodeCarbon outputs kg)
+        emissions = energy_data.get("emissions", 0)
+        emission_values = {}
+        
+        if units["co2"] == "mgCO2e":
+            # Convert kg to mg (1 kg = 1,000,000 mg)
+            emission_values = {
+                f"{units['co2']}": emissions * 1000000,
+                "g_carbon": emissions * 1000,
+                "kg_carbon": emissions
+            }
+        elif units["co2"] == "gCO2e":
+            # Convert kg to g (1 kg = 1,000 g)
+            emission_values = {
+                f"{units['co2']}": emissions * 1000,
+                "mg_carbon": emissions * 1000000,
+                "kg_carbon": emissions
+            }
+        elif units["co2"] == "kgCO2e":
+            emission_values = {
+                f"{units['co2']}": emissions,
+                "mg_carbon": emissions * 1000000,
+                "g_carbon": emissions * 1000
+            }
+        else:
+            # Default to mgCO2e if unknown unit
+            emission_values = {
+                "mgCO2e": emissions * 1000000,
+                "g_carbon": emissions * 1000,
+                "kg_carbon": emissions
+            }
+            
+        # Convert duration (CodeCarbon outputs seconds)
+        duration = energy_data.get("duration", 0)
+        if units["time"] == "s":
+            duration_value = duration
+        elif units["time"] == "ms":
+            duration_value = duration * 1000
+        elif units["time"] == "min":
+            duration_value = duration / 60
+        else:
+            # Default to seconds
+            duration_value = duration
+            
         # Format energy report
         return {
             "framework": framework,
             "language": language,
             "timestamp": energy_data.get("timestamp", None),
-            "energy": {
-                "total_watt_hours": energy_data.get("energy_consumed", 0),
-                "cpu_watt_hours": energy_data.get("cpu_energy", 0),
-                "ram_watt_hours": energy_data.get("ram_energy", 0),
-                "gpu_watt_hours": energy_data.get("gpu_energy", 0),
-                "kilowatt_hours": energy_data.get("energy_consumed", 0) / 1000,
-            },
+            "energy": energy_values,
             "power": {
                 "cpu_watts": energy_data.get("cpu_power", 0),
                 "ram_watts": energy_data.get("ram_power", 0),
                 "gpu_watts": energy_data.get("gpu_power", 0),
             },
-            "emissions": {
-                "mg_carbon": emissions_mg,
-                "g_carbon": emissions_mg / 1000,
-                "kg_carbon": emissions_mg / 1000000
+            "emissions": emission_values,
+            "duration": {
+                f"duration_{units['time']}": duration_value
             },
-            "duration_seconds": energy_data.get("duration", 0),
+            "units": units,  # Include the units in the output
             "metadata": {
                 "country_name": energy_data.get("country_name", "Unknown"),
                 "country_iso_code": energy_data.get("country_iso_code", "Unknown"),
@@ -320,8 +435,18 @@ class EnergyManager:
         }
 
     @staticmethod
-    def combine_energy_runs(output_dir, num_runs):
-        """Combine and analyze multiple energy measurement runs"""
+    def combine_energy_runs(output_dir, num_runs, config=None):
+        """
+        Combine and analyze multiple energy measurement runs
+        
+        Args:
+            output_dir: Directory containing run data
+            num_runs: Number of runs to analyze
+            config: Configuration dictionary with units settings
+            
+        Returns:
+            Statistics dictionary
+        """
         runs_dir = output_dir / "runs"
         if not runs_dir.exists():
             logger.error(f"Runs directory not found: {runs_dir}")
@@ -355,13 +480,104 @@ class EnergyManager:
         if not run_data:
             logger.error("No valid run data found")
             sys.exit(1)
-
-        # Calculate statistics
-        energy_values = [r["energy"]["total_watt_hours"] for r in run_data]
-        cpu_energy_values = [r["energy"]["cpu_watt_hours"] for r in run_data]
-        ram_energy_values = [r["energy"]["ram_watt_hours"] for r in run_data]
-        emissions_values = [r["emissions"]["mg_carbon"] for r in run_data]
-        duration_values = [r["duration_seconds"] for r in run_data]
+            
+        # Extract units from the first run data
+        units = run_data[0].get("units", {
+            "energy": "Wh",
+            "co2": "mgCO2e",
+            "time": "s"
+        })
+        
+        # Extract all energy, emissions, and duration keys
+        all_keys = {}
+        for r in run_data:
+            for section in ["energy", "emissions", "duration"]:
+                if section in r:
+                    for key in r[section].keys():
+                        if key not in ["units"]:  # Skip the units key
+                            all_keys.setdefault(section, set()).add(key)
+        
+        # Calculate statistics for all metrics
+        statistics = {}
+        
+        # Process energy data
+        for key in all_keys.get("energy", []):
+            try:
+                values = [r["energy"][key] for r in run_data if key in r["energy"]]
+                if values:
+                    statistics[f"{key}"] = {
+                        "values": values,
+                        "mean": float(np.mean(values)),
+                        "median": float(np.median(values)),
+                        "stddev": float(np.std(values)),
+                        "min": float(np.min(values)),
+                        "max": float(np.max(values)),
+                        "coefficient_of_variation": float(np.std(values) / np.mean(values) * 100) if np.mean(values) > 0 else 0
+                    }
+            except Exception as e:
+                logger.warning(f"Error calculating statistics for {key}: {e}")
+        
+        # Process emissions data
+        for key in all_keys.get("emissions", []):
+            try:
+                values = [r["emissions"][key] for r in run_data if key in r["emissions"]]
+                if values:
+                    statistics[f"{key}"] = {
+                        "values": values,
+                        "mean": float(np.mean(values)),
+                        "median": float(np.median(values)),
+                        "stddev": float(np.std(values)),
+                        "min": float(np.min(values)),
+                        "max": float(np.max(values)),
+                        "coefficient_of_variation": float(np.std(values) / np.mean(values) * 100) if np.mean(values) > 0 else 0
+                    }
+            except Exception as e:
+                logger.warning(f"Error calculating statistics for {key}: {e}")
+                
+        # Process duration data
+        for key in all_keys.get("duration", []):
+            try:
+                values = [r["duration"][key] for r in run_data if key in r["duration"]]
+                if values:
+                    statistics[f"{key}"] = {
+                        "values": values,
+                        "mean": float(np.mean(values)),
+                        "median": float(np.median(values)),
+                        "stddev": float(np.std(values)),
+                        "min": float(np.min(values)),
+                        "max": float(np.max(values)),
+                        "coefficient_of_variation": float(np.std(values) / np.mean(values) * 100) if np.mean(values) > 0 else 0
+                    }
+            except Exception as e:
+                logger.warning(f"Error calculating statistics for {key}: {e}")
+                
+        # Find the main energy key, CO2 key and duration key for logging
+        main_energy_key = f"total_{units['energy']}"
+        if main_energy_key not in statistics:
+            # Try to find any total energy key
+            for key in statistics:
+                if key.startswith("total_"):
+                    main_energy_key = key
+                    break
+            # If still not found, use the first energy key
+            if main_energy_key not in statistics and all_keys.get("energy"):
+                main_energy_key = next(iter(all_keys["energy"]))
+                
+        main_co2_key = units["co2"]
+        if main_co2_key not in statistics:
+            # Try to find any CO2 key
+            for key in statistics:
+                if "co2" in key.lower() or "carbon" in key.lower():
+                    main_co2_key = key
+                    break
+                    
+        main_duration_key = f"duration_{units['time']}"
+        if main_duration_key not in statistics:
+            # Try to find any duration key
+            for key in statistics:
+                if "duration" in key.lower():
+                    main_duration_key = key
+                    break
 
         # Create statistics report
         stats = {
@@ -369,54 +585,9 @@ class EnergyManager:
             "framework": run_data[0]["framework"],
             "language": run_data[0]["language"],
             "timestamp": run_data[0]["timestamp"],
+            "units": units,
             "individual_runs": individual_runs,
-            "statistics": {
-                "energy_wh": {
-                    "values": energy_values,
-                    "mean": float(np.mean(energy_values)),
-                    "median": float(np.median(energy_values)),
-                    "stddev": float(np.std(energy_values)),
-                    "min": float(np.min(energy_values)),
-                    "max": float(np.max(energy_values)),
-                    "coefficient_of_variation": float(np.std(energy_values) / np.mean(energy_values) * 100)
-                },
-                "cpu_energy_wh": {
-                    "values": cpu_energy_values,
-                    "mean": float(np.mean(cpu_energy_values)),
-                    "median": float(np.median(cpu_energy_values)),
-                    "stddev": float(np.std(cpu_energy_values)),
-                    "min": float(np.min(cpu_energy_values)),
-                    "max": float(np.max(cpu_energy_values)),
-                    "coefficient_of_variation": float(np.std(cpu_energy_values) / np.mean(cpu_energy_values) * 100)
-                },
-                "ram_energy_wh": {
-                    "values": ram_energy_values,
-                    "mean": float(np.mean(ram_energy_values)),
-                    "median": float(np.median(ram_energy_values)),
-                    "stddev": float(np.std(ram_energy_values)),
-                    "min": float(np.min(ram_energy_values)),
-                    "max": float(np.max(ram_energy_values)),
-                    "coefficient_of_variation": float(np.std(ram_energy_values) / np.mean(ram_energy_values) * 100)
-                },
-                "emissions_mgCO2e": {
-                    "values": emissions_values,
-                    "mean": float(np.mean(emissions_values)),
-                    "median": float(np.median(emissions_values)),
-                    "stddev": float(np.std(emissions_values)),
-                    "min": float(np.min(emissions_values)),
-                    "max": float(np.max(emissions_values)),
-                    "coefficient_of_variation": float(np.std(emissions_values) / np.mean(emissions_values) * 100)
-                },
-                "duration_s": {
-                    "values": duration_values,
-                    "mean": float(np.mean(duration_values)),
-                    "median": float(np.median(duration_values)),
-                    "stddev": float(np.std(duration_values)),
-                    "min": float(np.min(duration_values)),
-                    "max": float(np.max(duration_values)),
-                    "coefficient_of_variation": float(np.std(duration_values) / np.mean(duration_values) * 100)
-                }
-            }
+            "statistics": statistics
         }
 
         # Save stats to file
@@ -426,21 +597,42 @@ class EnergyManager:
 
         logger.success(f"Combined energy statistics saved to {stats_file}")
 
-        # Print summary
+        # Print summary with appropriate units
         logger.info("\n🔋 Energy Statistics Summary:")
         logger.info(f"   - Runs: {stats['runs']}")
-        logger.info(
-            f"   - Mean energy: {stats['statistics']['energy_wh']['mean']:.6f} Wh (±{stats['statistics']['energy_wh']['stddev']:.6f} Wh)")
-        logger.info(
-            f"   - Mean CO2: {stats['statistics']['emissions_mgCO2e']['mean']:.2f} mgCO2e (±{stats['statistics']['emissions_mgCO2e']['stddev']:.2f} mgCO2e)")
-        logger.info(
-            f"   - Mean duration: {stats['statistics']['duration_s']['mean']:.2f}s (±{stats['statistics']['duration_s']['stddev']:.2f}s)")
+        
+        if main_energy_key in statistics:
+            logger.info(
+                f"   - Mean energy: {statistics[main_energy_key]['mean']:.6f} {main_energy_key.split('_')[-1]} "
+                f"(±{statistics[main_energy_key]['stddev']:.6f} {main_energy_key.split('_')[-1]})")
+                
+        if main_co2_key in statistics:
+            logger.info(
+                f"   - Mean CO2: {statistics[main_co2_key]['mean']:.2f} {main_co2_key} "
+                f"(±{statistics[main_co2_key]['stddev']:.2f} {main_co2_key})")
+                
+        if main_duration_key in statistics:
+            time_unit = main_duration_key.split('_')[-1]
+            logger.info(
+                f"   - Mean duration: {statistics[main_duration_key]['mean']:.2f}{time_unit} "
+                f"(±{statistics[main_duration_key]['stddev']:.2f}{time_unit})")
 
         return stats
 
     @staticmethod
-    def process_energy_results(output_dir, framework, language):
-        """Process energy results from CodeCarbon output"""
+    def process_energy_results(output_dir, framework, language, config=None):
+        """
+        Process energy results from CodeCarbon output
+        
+        Args:
+            output_dir: Directory containing energy data
+            framework: Framework name
+            language: Language name
+            config: Configuration dictionary with units settings
+            
+        Returns:
+            True if processing was successful
+        """
         # Check for CodeCarbon output in the energy directory
         energy_dir = output_dir / "energy"
         energy_dir.mkdir(exist_ok=True)
@@ -453,26 +645,46 @@ class EnergyManager:
         # Parse CodeCarbon output
         energy_data = EnergyManager.parse_codecarbon_output(emissions_csv)
 
-        # Generate energy report
+        # Generate energy report with units from config
         energy_report = EnergyManager.generate_energy_report(
-            energy_data, framework, language)
+            energy_data, framework, language, config)
 
         # Save energy report
         energy_json = energy_dir / "energy.json"
         with open(energy_json, 'w') as f:
             json.dump(energy_report, f, indent=2)
 
-        # Print summary
+        # Get the units used in the report
+        units = energy_report.get("units", {
+            "energy": "Wh",
+            "co2": "mgCO2e",
+            "time": "s"
+        })
+        
+        # Get the main energy field name using the energy unit
+        energy_field = f"total_{units['energy']}"
+        cpu_energy_field = f"cpu_{units['energy']}"
+        ram_energy_field = f"ram_{units['energy']}"
+        
+        # Get the main duration field name using the time unit
+        duration_field = f"duration_{units['time']}"
+        
+        # Print summary with appropriate units
         logger.info("\n🔋 Energy Consumption Summary:")
-        logger.info(
-            f"   - Total energy: {energy_report['energy']['total_watt_hours']:.6f} Wh")
-        logger.info(
-            f"   - CPU energy: {energy_report['energy']['cpu_watt_hours']:.6f} Wh")
-        logger.info(
-            f"   - RAM energy: {energy_report['energy']['ram_watt_hours']:.6f} Wh")
-        logger.info(
-            f"   - CO2 emissions: {energy_report['emissions']['mg_carbon']:.2f} mgCO2e")
-        logger.info(
-            f"   - Duration: {energy_report['duration_seconds']:.2f} seconds")
+        
+        if energy_field in energy_report["energy"]:
+            logger.info(f"   - Total energy: {energy_report['energy'][energy_field]:.6f} {units['energy']}")
+            
+        if cpu_energy_field in energy_report["energy"]:
+            logger.info(f"   - CPU energy: {energy_report['energy'][cpu_energy_field]:.6f} {units['energy']}")
+            
+        if ram_energy_field in energy_report["energy"]:
+            logger.info(f"   - RAM energy: {energy_report['energy'][ram_energy_field]:.6f} {units['energy']}")
+            
+        if units["co2"] in energy_report["emissions"]:
+            logger.info(f"   - CO2 emissions: {energy_report['emissions'][units['co2']]:.2f} {units['co2']}")
+            
+        if duration_field in energy_report["duration"]:
+            logger.info(f"   - Duration: {energy_report['duration'][duration_field]:.2f} {units['time']}")
 
         return True

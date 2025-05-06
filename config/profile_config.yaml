@@ -8,57 +8,106 @@ tests:
     script: json.lua
     description: "JSON serialization test"
     
-  # - name: plaintext
-  #   endpoint: /plaintext
-  #   script: basic.lua
-  #   description: "Plaintext response test"
+  - name: plaintext
+    endpoint: /plaintext
+    script: basic.lua
+    description: "Plaintext response test"
     
-  # - name: db
-  #   endpoint: /db
-  #   script: db.lua
-  #   description: "Database query test"
+  - name: db
+    endpoint: /db
+    script: db.lua
+    description: "Database query test"
     
-  # - name: queries
-  #   endpoint: /queries
-  #   script: queries.lua
-  #   description: "Multiple database queries test"
-  #   parameters:
-  #     count: 20
+  - name: queries
+    endpoint: /queries
+    script: queries.lua
+    description: "Multiple database queries test"
+    parameters:
+      count: 20
     
-  # - name: complex_routing
-  #   endpoint: /complex-routing/1/test/param1/param2
-  #   script: routing.lua
-  #   description: "Complex route handling test"
+  - name: complex_routing
+    endpoint: /complex-routing/1/test/param1/param2
+    script: routing.lua
+    description: "Complex route handling test"
     
-  # - name: template_simple
-  #   endpoint: /template-simple
-  #   script: template_simple.lua
-  #   description: "Simple template rendering test"
+  - name: template_simple
+    endpoint: /template-simple
+    script: template_simple.lua
+    description: "Simple template rendering test"
     
-  # - name: template_complex
-  #   endpoint: /template-complex
-  #   script: template_complex.lua
-  #   description: "Complex template rendering test"
+  - name: template_complex
+    endpoint: /template-complex
+    script: template_complex.lua
+    description: "Complex template rendering test"
     
-  # - name: cpu_intensive
-  #   endpoint: /cpu-intensive
-  #   script: cpu.lua
-  #   description: "CPU-intensive computation test"
+  - name: cpu_intensive
+    endpoint: /cpu-intensive
+    script: cpu.lua
+    description: "CPU-intensive computation test"
     
-  # - name: memory_heavy
-  #   endpoint: /memory-heavy
-  #   script: memory.lua
-  #   description: "Memory-intensive operation test"
+  - name: memory_heavy
+    endpoint: /memory-heavy
+    script: memory.lua
+    description: "Memory-intensive operation test"
+    
+  # New tests for enhanced benchmarking
+  - name: middleware_advanced
+    endpoint: /middleware-advanced
+    script: middleware.lua
+    description: "Advanced middleware chain test with configurable behaviors"
+    
+  - name: streaming_json
+    endpoint: /streaming
+    script: streaming.lua
+    description: "Streaming response test with JSON data"
+    parameters:
+      mode: json
+      size: 2000
+      chunk_size: 64
+      
+  - name: streaming_vs_nonstreaming
+    endpoint: /streaming/non-streaming
+    script: streaming_compare.lua
+    description: "Comparison of streaming vs non-streaming for large responses"
+    parameters:
+      mode: json
+      size: 2000
+      
+  - name: error_handling
+    endpoint: /errors
+    script: errors.lua
+    description: "Enhanced error handling and recovery test"
+    
+  - name: advanced_routing
+    endpoint: /routing/1/users/filter/active/sort/name
+    script: routing_advanced.lua
+    description: "Complex URL routing with nested parameters"
+    parameters:
+      complexity: 3
+      
+  - name: mixed_workload
+    endpoint: /mixed-workload
+    script: mixed_workload.lua
+    description: "Mixed workload test simulating real-world usage patterns"
+    parameters:
+      pattern: balanced
+      intensity: 3
+      fixed_seed: true
+      
+  - name: io_operations
+    endpoint: /io-ops
+    script: io_ops.lua
+    description: "File I/O operations with various buffer sizes and strategies"
+    parameters:
+      op: combined
+      buffer: 8192
+      size: 1024
+      iterations: 3
 
 # Profiling settings
 profiling:
   scalene:
-    enabled: true
-    profile_all: true   # Profile all code, not just application code
-    reduced_profile: true  # Use reduced profiling for better overhead
-    memory_sampling_rate: 100  # Memory sampling rate in Hz (higher = more accurate)
-    cpu_sampling_rate: 0.01  # CPU sampling rate in seconds (lower = more accurate)
-    pid_file: null  # Scalene PID file
+    enabled: true  # Whether to use Scalene for profiling
 
 # WRK settings optimized for profiling
 wrk:

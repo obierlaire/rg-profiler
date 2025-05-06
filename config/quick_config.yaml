@@ -11,11 +11,7 @@ tests:
 # Profiling settings
 profiling:
   scalene:
-    enabled: true
-    profile_all: true
-    reduced_profile: true  # Use reduced profiling for better overhead
-    memory_sampling_rate: 100  # Memory sampling rate in Hz
-    cpu_sampling_rate: 0.01  # CPU sampling rate in seconds
+    enabled: true  # Whether to use Scalene for profiling
 
 # Endpoints configuration
 endpoints:
@@ -56,7 +52,7 @@ quick_variants:
   test_only:
     profiling:
       scalene:
-        enabled: false
+        enabled: true
     server:
       startup_timeout: 20
       stabilization_time: 1

@@ -3,14 +3,14 @@ WRK script for plaintext energy testing - most reproducible response
 ]]--
 
 -- Track statistics
-requests = 0
-responses = 0
-errors = 0
-plaintext_responses = 0
+local request_counter = 0
+local responses = 0
+local errors = 0
+local plaintext_responses = 0
 
 function request()
    -- Increment request counter
-   requests = requests + 1
+   request_counter = request_counter + 1
    
    -- Set Accept header for plain text response
    wrk.headers["Accept"] = "text/plain"

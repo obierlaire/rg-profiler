@@ -33,9 +33,11 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'server.core.middleware.CustomSecurityMiddleware',
     'server.core.middleware.RateLimitMiddleware',
+    'server.core.middleware.RequestTransformMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'server.core.middleware.ResponseTransformMiddleware',
 ]
 
 ROOT_URLCONF = 'server.urls'

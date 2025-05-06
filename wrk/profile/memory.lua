@@ -3,17 +3,17 @@ WRK script for memory-intensive testing - measures memory allocation performance
 ]]--
 
 -- Track statistics
-requests = 0
-responses = 0
-errors = 0
-valid_responses = 0
+local request_counter = 0
+local responses = 0
+local errors = 0
+local valid_responses = 0
 
 function request()
    -- Increment request counter
-   requests = requests + 1
+   request_counter = request_counter + 1
    
    -- Set memory parameter (1-10, varying with each request)
-   local memory_size = requests % 10 + 1
+   local memory_size = request_counter % 10 + 1
    
    -- Set Accept header for JSON response
    wrk.headers["Accept"] = "application/json"

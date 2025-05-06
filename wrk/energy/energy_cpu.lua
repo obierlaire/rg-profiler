@@ -3,14 +3,14 @@ WRK script for CPU-intensive energy testing - fixed computation load
 ]]--
 
 -- Track statistics
-requests = 0
-responses = 0
-errors = 0
-valid_responses = 0
+local request_counter = 0
+local responses = 0
+local errors = 0
+local valid_responses = 0
 
 function request()
    -- Increment request counter
-   requests = requests + 1
+   request_counter = request_counter + 1
    
    -- Use fixed complexity value for reproducible results
    local complexity = 5
