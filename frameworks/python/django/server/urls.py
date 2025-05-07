@@ -3,7 +3,7 @@ URL Configuration for the Django implementation in the RG Profiler framework
 """
 from django.urls import path, re_path
 
-from server.core import views
+from server import views  # Updated import path
 
 urlpatterns = [
     # 1. JSON Serialization

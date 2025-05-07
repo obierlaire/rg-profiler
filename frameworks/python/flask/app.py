@@ -7,6 +7,7 @@ import os
 import signal
 import sys
 from datetime import datetime
+from wsgiref.simple_server import make_server
 
 # Import flask app
 from server import create_app
@@ -41,6 +42,9 @@ def signal_handler(sig, frame):
     global shutdown_requested
     print(f"Received signal {sig}, initiating graceful shutdown...")
     shutdown_requested = True
+    # Wait briefly before exiting to allow for profiling to complete
+    import time
+    time.sleep(2)
     sys.exit(0)
 
 
@@ -51,9 +55,8 @@ signal.signal(signal.SIGINT, signal_handler)
 # Create Flask app
 app = create_app(db_type, db_host, db_port, db_user, db_pass, db_name)
 
+
 # Add shutdown endpoint
-
-
 @app.route('/shutdown', methods=['GET'])
 def shutdown():
     """Endpoint to initiate graceful server shutdown with energy data saving"""
@@ -67,67 +70,49 @@ def shutdown():
         "timestamp": datetime.now().isoformat()
     })
 
-    # Use Werkzeug's shutdown function if available
-    from flask import request
-    shutdown_func = request.environ.get('werkzeug.server.shutdown')
-    if shutdown_func is not None:
-        print("Using Werkzeug shutdown function")
-        # Schedule shutdown after response is sent
+    # Schedule shutdown after response is sent
+    def shutdown_server():
+        import time
+        time.sleep(1)  # Allow time for response to be sent
 
-        def shutdown_server():
-            # Allow time for response to be sent
-            import time
-            time.sleep(1)
+        # Send SIGTERM to self
+        import os
+        import signal
+        pid = os.getpid()
 
-            # Send SIGTERM to self
-            import os
-            import signal
-            pid = os.getpid()
+        # Log before sending signal
+        print(f"Sending SIGTERM to self (PID: {pid})")
 
-            # Log before sending signal
-            print(f"Sending SIGTERM to self (PID: {pid})")
+        # Use os.kill to send signal to self
+        os.kill(pid, signal.SIGTERM)
 
-            # Use os.kill to send signal to self
-            os.kill(pid, signal.SIGTERM)
-
-        import threading
-        threading.Thread(target=shutdown_server).start()
-    else:
-        # Fallback to os._exit
-        print("Werkzeug shutdown function not available, using os.kill")
-
-        def trigger_shutdown():
-            import os
-            import signal
-            import time
-
-            # Allow time for response to be sent
-            time.sleep(1)
-
-            # Get own PID
-            pid = os.getpid()
-
-            # Log before sending signal
-            print(f"Sending SIGTERM to self (PID: {pid})")
-
-            # Send SIGTERM to self
-            os.kill(pid, signal.SIGTERM)
-
-        import threading
-        threading.Thread(target=trigger_shutdown).start()
+    import threading
+    threading.Thread(target=shutdown_server).start()
 
     return response
 
 
 if __name__ == '__main__':
-    # Create a test file to verify volume mounting
+    # Check if we're running in a profiling mode
+    profiling_mode = os.environ.get('PROFILING_MODE', 'profile')
+    use_scalene = os.environ.get('USE_SCALENE', 'true').lower() == 'true'
+
+    print(f"Starting Flask server in {profiling_mode} mode")
+    print(f"Database: {db_type} at {db_host}:{db_port}")
+    print(f"Scalene profiling: {'enabled' if use_scalene else 'disabled'}")
+
+    # Create output directory for tests if needed
     os.makedirs("/output", exist_ok=True)
     with open("/output/test-file.txt", "w") as f:
         f.write("Volume mounting is working correctly")
 
-    print(
-        f"Starting Flask server in {os.environ.get('PROFILING_MODE', 'default')} mode")
-    print(f"Database: {db_type} at {db_host}:{db_port}")
+    # Use a standard WSGI server instead of Flask's development server
+    # This provides better profiling capabilities
+    httpd = make_server(server_host, server_port, app)
+    print(f"Starting WSGI server on {server_host}:{server_port}")
 
-    # Run the Flask app
-    app.run(host=server_host, port=server_port, threaded=False, debug=False)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("Keyboard interrupt received, shutting down server")
+        httpd.server_close()

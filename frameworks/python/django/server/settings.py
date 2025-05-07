@@ -22,22 +22,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'server.core',
+    'server',  # Changed from 'server.core' to 'server'
 ]
 
 MIDDLEWARE = [
-    'server.core.middleware.ResponseTimeMiddleware',
+    'server.middleware.ResponseTimeMiddleware',  # Updated path
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'server.core.middleware.CustomSecurityMiddleware',
-    'server.core.middleware.RateLimitMiddleware',
-    'server.core.middleware.RequestTransformMiddleware',
+    'server.middleware.CustomSecurityMiddleware',  # Updated path
+    'server.middleware.RateLimitMiddleware',  # Updated path
+    'server.middleware.RequestTransformMiddleware',  # Updated path
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'server.core.middleware.ResponseTransformMiddleware',
+    'server.middleware.ResponseTransformMiddleware',  # Updated path
 ]
 
 ROOT_URLCONF = 'server.urls'
@@ -45,7 +45,7 @@ ROOT_URLCONF = 'server.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'server/core/templates')],
+        'DIRS': [os.path.join(BASE_DIR, 'server/templates')],  # Updated path
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
