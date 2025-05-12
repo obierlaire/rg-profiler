@@ -15,6 +15,7 @@ from src.wrk_manager import WrkManager
 
 # Base run commands for different modes
 MODE_RUN_COMMANDS = {
+    # MODE_PROFILE: "scalene --json --outfile=/output/scalene/scalene.json  --profile-all --profile-only site-packages --reduced-profile /app/app.py",
     MODE_PROFILE: "scalene --json --outfile=/output/scalene/scalene.json  --profile-all --profile-only {framework} --reduced-profile /app/app.py",
     MODE_ENERGY: "python /app/codecarbon_wrapper.py python /app/app.py",
     MODE_STANDARD: "python /app/app.py",

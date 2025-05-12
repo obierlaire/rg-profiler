@@ -8,6 +8,8 @@ from server import views  # Updated import path
 urlpatterns = [
     # 1. JSON Serialization
     path('json', views.json_endpoint, name='json'),
+    path('json-large', views.json_large_endpoint, name='json_large'),
+    path('json-parse', views.json_parse_endpoint, name='json_parse'),
     
     # 2. Plaintext
     path('plaintext', views.plaintext_endpoint, name='plaintext'),

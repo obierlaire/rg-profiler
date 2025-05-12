@@ -105,6 +105,8 @@ Implement all of the following endpoints with consistent behavior across framewo
 | Endpoint | Description | Method |
 |----------|-------------|--------|
 | `/json` | Return `{"message": "Hello, World!", "timestamp": "ISO-format", "framework": "[framework_name]"}` | GET |
+| `/json-large` | Return a large JSON payload with nested objects and arrays (configurable size) | GET |
+| `/json-parse` | Parse and validate JSON data, return processing metrics | POST |
 | `/plaintext` | Return "Hello, World!" with Content-Type text/plain | GET |
 | `/db` | Query a random row from the 'world' table and return as JSON | GET |
 | `/queries?queries=n` | Perform n random queries (default 1, max 500) and return as JSON array | GET |
@@ -159,6 +161,25 @@ Implement middleware to:
 8. Add custom response headers based on request properties
 
 ## Implementation Details for Enhanced Endpoints
+
+### JSON Testing Endpoints
+
+#### Standard JSON (`/json`)
+- Return a simple JSON object with message, timestamp, and framework name
+- Use the framework's standard JSON serialization
+
+#### Large JSON (`/json-large`)
+- Return a large JSON payload with deeply nested objects and arrays
+- Support query parameter `size` to control number of items (default 100)
+- Include nested objects, arrays, strings, numbers, and booleans
+- Generate complex data structures to test serialization performance
+
+#### JSON Parsing (`/json-parse`)
+- Accept JSON data via POST requests
+- Validate the structure and types of the JSON data
+- Process the contents with multiple iterations
+- Return metrics about the processing time and data characteristics
+- Include validation results and any errors encountered
 
 ### Streaming Response (`/streaming`)
 - Implement a streaming response mechanism that sends data in chunks

@@ -27,6 +27,242 @@ def json_endpoint(request):
     })
 
 
+def json_large_endpoint(request):
+    """Large JSON payload serialization test"""
+    # Get size parameter, default 100 items
+    items_count = int(request.GET.get('size', 100))
+    # Cap for safety
+    items_count = min(max(10, items_count), 1000)
+    
+    # Get repeat parameter - number of times to repeat the same data structure
+    repeat_count = int(request.GET.get('repeat', 1))
+    # Cap for safety
+    repeat_count = min(max(1, repeat_count), 20)
+    
+    # Non-ASCII text strings to demonstrate ensure_ascii=False benefits
+    non_ascii_texts = [
+        "こんにちは世界",  # Japanese "Hello World"
+        "你好，世界",      # Chinese "Hello World"
+        "Привет, мир",     # Russian "Hello World"
+        "Γειά σου Κόσμε",  # Greek "Hello World"
+        "مرحبا بالعالم",   # Arabic "Hello World"
+        "안녕하세요 세계",  # Korean "Hello World"
+        "नमस्ते दुनिया",    # Hindi "Hello World"
+        "Olá Mundo",       # Portuguese "Hello World"
+        "🌍🌎🌏 👋 🌞",   # Emoji "World Hello Sun"
+        "Éàçèñøů ẞæøåäö", # European accents and special chars
+    ]
+    
+    # Create a base item template to reuse and avoid regenerating data
+    base_item = {
+        'id': 0,
+        'uuid': f"{0:08d}-{random.randint(1000, 9999)}-{random.randint(1000, 9999)}-{random.randint(1000, 9999)}",
+        'created_at': datetime.now().isoformat(),
+        'active': True,
+        'priority': 3,
+        'tags': [f"tag_{random.randint(1, 20)}" for _ in range(3)],
+        'details': {
+            'title': "Item Title",
+            'description': "This is a detailed description with random text " + 
+                           ''.join(random.choice('abcdefghijklmnopqrstuvwxyz ') for _ in range(50)),
+            'locale_descriptions': {
+                'ja': non_ascii_texts[0],
+                'zh': non_ascii_texts[1],
+                'ru': non_ascii_texts[2],
+                'el': non_ascii_texts[3],
+                'ar': non_ascii_texts[4],
+                'ko': non_ascii_texts[5],
+                'hi': non_ascii_texts[6],
+                'pt': non_ascii_texts[7],
+                'emoji': non_ascii_texts[8],
+                'euro': non_ascii_texts[9],
+            },
+            'properties': {
+                'color': 'blue',
+                'size': 'medium',
+                'weight': 5.25,
+                'dimensions': {
+                    'width': 50.0,
+                    'height': 30.0,
+                    'depth': 20.0
+                }
+            },
+            'metrics': [25.5, 40.2, 60.8, 35.7, 90.1],
+            'history': [
+                {
+                    'timestamp': (datetime.now() - timedelta(days=10)).isoformat(),
+                    'event': "Event 1",
+                    'value': 50,
+                    'note': non_ascii_texts[random.randint(0, len(non_ascii_texts)-1)]
+                },
+                {
+                    'timestamp': (datetime.now() - timedelta(days=5)).isoformat(),
+                    'event': "Event 2",
+                    'value': 75,
+                    'note': non_ascii_texts[random.randint(0, len(non_ascii_texts)-1)]
+                },
+                {
+                    'timestamp': (datetime.now() - timedelta(days=1)).isoformat(),
+                    'event': "Event 3",
+                    'value': 100,
+                    'note': non_ascii_texts[random.randint(0, len(non_ascii_texts)-1)]
+                }
+            ]
+        },
+        'relationships': [
+            {
+                'type': 'related',
+                'id': 1,
+                'strength': 0.8,
+                'note': non_ascii_texts[random.randint(0, len(non_ascii_texts)-1)]
+            },
+            {
+                'type': 'related',
+                'id': 2,
+                'strength': 0.5,
+                'note': non_ascii_texts[random.randint(0, len(non_ascii_texts)-1)]
+            }
+        ]
+    }
+    
+    # Create a large JSON response with many nested objects
+    response = {
+        'metadata': {
+            'count': items_count,
+            'repeat': repeat_count,
+            'timestamp': datetime.now().isoformat(),
+            'framework': 'django',
+            'type': 'large payload test',
+            'version': '1.0',
+            'non_ascii_sample': non_ascii_texts[random.randint(0, len(non_ascii_texts)-1)]
+        },
+        'data_sets': []
+    }
+    
+    # Repeat the same data structure multiple times if requested
+    for repeat in range(repeat_count):
+        data_set = {
+            'set_id': repeat + 1,
+            'items': []
+        }
+        
+        # Generate many items with nested structures
+        items = []
+        for i in range(items_count):
+            # Deep copy the base item to avoid reference issues
+            import copy
+            item = copy.deepcopy(base_item)
+            
+            # Update only the values that need to be unique
+            item['id'] = i
+            item['uuid'] = f"{i:08d}-{random.randint(1000, 9999)}-{random.randint(1000, 9999)}-{random.randint(1000, 9999)}"
+            item['active'] = random.choice([True, False])
+            item['priority'] = random.randint(1, 5)
+            item['details']['title'] = f"Item {i} Title {non_ascii_texts[i % len(non_ascii_texts)]}"
+            
+            items.append(item)
+        
+        data_set['items'] = items
+        response['data_sets'].append(data_set)
+    
+    # Determine if we should use ensure_ascii=False
+    use_unicode = request.GET.get('unicode', 'true').lower() == 'true'
+    
+    # Create the JSON response with appropriate settings
+    json_response = JsonResponse(response, json_dumps_params={'ensure_ascii': not use_unicode})
+    
+    return json_response
+
+
+@csrf_exempt
+def json_parse_endpoint(request):
+    """JSON parsing test endpoint"""
+    try:
+        # Parse the JSON request
+        data = json.loads(request.body)
+        
+        if not data:
+            return JsonResponse({
+                'error': 'No JSON data provided',
+                'status': 'error'
+            }, status=400)
+            
+        # Track metrics for the response
+        metrics = {
+            'received_timestamp': datetime.now().isoformat(),
+            'content_length': len(request.body),
+            'processing_time_ms': 0,  # Will be set later
+            'item_count': 0,
+            'field_count': 0,
+            'validation': {
+                'success': True,
+                'errors': []
+            }
+        }
+        
+        start_time = time.time()
+        
+        # Process and validate the request
+        processed_data = {
+            'items': []
+        }
+        
+        # Process top-level fields
+        for key, value in data.items():
+            if key == 'items' and isinstance(value, list):
+                metrics['item_count'] = len(value)
+                
+                # Process each item
+                for i, item in enumerate(value):
+                    if not isinstance(item, dict):
+                        metrics['validation']['success'] = False
+                        metrics['validation']['errors'].append(f"Item {i} is not an object")
+                        continue
+                        
+                    processed_item = {}
+                    field_count = 0
+                    
+                    # Process item fields
+                    for field_key, field_value in item.items():
+                        processed_item[field_key] = field_value
+                        field_count += 1
+                        
+                        # Validate specific fields
+                        if field_key == 'id' and not isinstance(field_value, (int, str)):
+                            metrics['validation']['success'] = False
+                            metrics['validation']['errors'].append(f"Item {i} has invalid id")
+                            
+                        if field_key == 'active' and not isinstance(field_value, bool):
+                            metrics['validation']['success'] = False
+                            metrics['validation']['errors'].append(f"Item {i} has invalid active status")
+                    
+                    metrics['field_count'] += field_count
+                    processed_data['items'].append(processed_item)
+            else:
+                processed_data[key] = value
+                
+        # Calculate processing time
+        metrics['processing_time_ms'] = round((time.time() - start_time) * 1000, 2)
+        
+        # Build response
+        response = {
+            'status': 'success' if metrics['validation']['success'] else 'error',
+            'metrics': metrics,
+            'data': processed_data,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return JsonResponse(response)
+        
+    except Exception as e:
+        # Handle JSON parsing errors
+        return JsonResponse({
+            'error': f"Error processing JSON: {str(e)}",
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }, status=400)
+
+
 def plaintext_endpoint(request):
     """Simple plaintext response test"""
     return HttpResponse('Hello, World!', content_type='text/plain')

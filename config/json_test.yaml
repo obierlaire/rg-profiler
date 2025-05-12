@@ -1,15 +1,30 @@
 mode: energy
 
 tests:
-  - name: json_fixed
+  - name: json_no_session
     endpoint: /json
-    script: energy_json.lua
-    description: "JSON serialization test for energy measurement"
+    script: energy_json_no_session.lua
+    description: "JSON serialization without session (optimized path)"
+    
+  - name: json_with_session
+    endpoint: /json
+    script: energy_json_with_session.lua
+    description: "JSON serialization with session (baseline)"
+    
+  # - name: json_large
+  #   endpoint: /json-large
+  #   script: energy_json_large.lua
+  #   description: "Large JSON payload serialization test for energy measurement"
+    
+  # - name: json_parse
+  #   endpoint: /json-parse
+  #   script: energy_json_parse.lua
+  #   description: "JSON parsing test for energy measurement"
 
 wrk:
-  duration: 90  # Longer duration
+  duration: 30  # Longer duration
   max_concurrency: 16  # Higher concurrency
   levels: "16"
 
 energy:
-  runs: 3  # Multiple runs for statistical significance
+  runs: 1  # Multiple runs for statistical significance
